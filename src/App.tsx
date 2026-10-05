@@ -1,3 +1,4 @@
+import EntryForm from './screens/EntryForm'
 import Home from './screens/Home'
 import EmployerEdit from './screens/EmployerEdit'
 import ScheduleEdit from './screens/ScheduleEdit'
@@ -13,6 +14,10 @@ export default function App() {
       return <ScheduleEdit />
     case '/settings/employer/:id':
       return <EmployerEdit key={route.params.id} id={route.params.id} />
+    case '/entry/new':
+      return <EntryForm key="new" />
+    case '/entry/:id':
+      return <EntryForm key={route.params.id} id={route.params.id} />
     default:
       return <Home />
   }
