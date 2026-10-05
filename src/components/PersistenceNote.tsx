@@ -27,7 +27,7 @@ export default function PersistenceNote() {
 
   if (!show) return null
   return (
-    <div role="note" className="fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-30 mx-auto max-w-md rounded-2xl bg-surface p-4 text-sm shadow-lg">
+    <aside aria-label="Storage notice" className="fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-30 mx-auto max-w-md rounded-2xl bg-surface p-4 text-sm shadow-lg">
       <p>iOS may clear this app's data if storage runs low. Export a backup regularly in Settings.</p>
       <button
         type="button"
@@ -43,6 +43,6 @@ export default function PersistenceNote() {
       >
         Got it
       </button>
-    </div>
+    </aside>
   )
 }
