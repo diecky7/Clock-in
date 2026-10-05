@@ -113,6 +113,23 @@ describe('backup', () => {
     await expectRejectedUnchanged(blob({ ...validDoc(), entries: [{ ...entry('t9'), breakMin: '30' }] }))
   })
 
+  it('rejects an entry with a date-only start', async () => {
+    await expectRejectedUnchanged(blob({ ...validDoc(), entries: [{ ...entry('t9'), start: '2026-10-05' }] }))
+  })
+
+  it('rejects a negative expense amount', async () => {
+    await expectRejectedUnchanged(blob({ ...validDoc(), expenses: [{ ...expense('x9'), amountCents: -1 }] }))
+  })
+
+  it('rejects an expense referencing a missing photo', async () => {
+    await expectRejectedUnchanged(blob({ ...validDoc(), expenses: [expense('x9', ['nope'])] }))
+  })
+
+  it('rejects an employer rate with a bad from date', async () => {
+    const bad = { ...employer('n2'), rates: [{ from: 'January', cents: 2500 }] }
+    await expectRejectedUnchanged(blob({ ...validDoc(), employers: [bad] }))
+  })
+
   it('rejects an undecodable photo', async () => {
     await expectRejectedUnchanged(blob({ ...validDoc(), photos: [{ id: 'p', type: 'image/png', data: 'garbage' }] }))
   })

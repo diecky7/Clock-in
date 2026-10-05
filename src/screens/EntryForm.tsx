@@ -93,7 +93,14 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
     }
   }, [id, editing, initialDate])
 
-  async function useGps() {
+  // Once the user picks, drags or clears the address, the automatic GPS fix must not overwrite it.
+  const userChose = useRef(false)
+  function setPlaceByUser(p: Place | null) {
+    userChose.current = true
+    setPlace(p)
+  }
+
+  async function useGps(auto = false) {
     setGpsBusy(true)
     setLocNote('')
     try {
@@ -104,9 +111,10 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
       } catch {
         p = { lat: pos.lat, lon: pos.lon, label: `${pos.lat.toFixed(5)}, ${pos.lon.toFixed(5)}` }
       }
+      if (auto && userChose.current) return
       setPlace(p)
     } catch {
-      setLocNote("Couldn't get your location. Search for an address instead.")
+      if (!(auto && userChose.current)) setLocNote("Couldn't get your location. Search for an address instead.")
     } finally {
       setGpsBusy(false)
     }
@@ -117,7 +125,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
   useEffect(() => {
     if (!ready || editing || missing || askedGps.current) return
     askedGps.current = true
-    void useGps()
+    void useGps(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, editing, missing])
 
@@ -158,7 +166,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
   }
 
   function choose(p: Place) {
-    setPlace(p)
+    setPlaceByUser(p)
     setQuery('')
     setOpen(false)
     setLocNote('')
@@ -305,7 +313,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
         )}
         <div className="mt-3">
           <Suspense fallback={<div className="h-60 w-full rounded-2xl bg-surface" />}>
-            <MapPicker value={place} onChange={setPlace} fallback={recents[0] ?? null} />
+            <MapPicker value={place} onChange={setPlaceByUser} fallback={recents[0] ?? null} />
           </Suspense>
         </div>
         {place && (
@@ -313,7 +321,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
             <p data-testid="chosen-place" className="text-sm">
               {place.label}
             </p>
-            <button type="button" onClick={() => setPlace(null)} className="min-h-11 shrink-0 px-2 text-sm text-muted">
+            <button type="button" onClick={() => setPlaceByUser(null)} className="min-h-11 shrink-0 px-2 text-sm text-muted">
               Remove
             </button>
           </div>

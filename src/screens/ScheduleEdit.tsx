@@ -58,7 +58,7 @@ export default function ScheduleEdit() {
                       aria-label={`${name} in`}
                       className={inputCls}
                       value={day.in}
-                      onChange={(e) => update(i, { ...day, in: e.target.value })}
+                      onChange={(e) => e.target.value && update(i, { ...day, in: e.target.value })}
                     />
                   </label>
                   <label className="grid min-w-0 gap-1">
@@ -68,7 +68,7 @@ export default function ScheduleEdit() {
                       aria-label={`${name} out`}
                       className={inputCls}
                       value={day.out}
-                      onChange={(e) => update(i, { ...day, out: e.target.value })}
+                      onChange={(e) => e.target.value && update(i, { ...day, out: e.target.value })}
                     />
                   </label>
                   <label className="col-span-2 grid min-w-0 gap-1">

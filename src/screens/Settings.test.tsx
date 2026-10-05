@@ -130,6 +130,16 @@ describe('ScheduleEdit', () => {
     await waitFor(async () => expect((await repo.getSettings()).schedule[1]).toBeNull())
   })
 
+  it('ignores a cleared time instead of saving an empty one', async () => {
+    const user = userEvent.setup()
+    render(<ScheduleEdit />)
+    const input = await screen.findByLabelText('Wednesday in')
+    await user.clear(input)
+    expect(input).toHaveValue('07:00')
+    await new Promise((r) => setTimeout(r, 30))
+    expect((await repo.getSettings()).schedule[3]?.in).toBe('07:00')
+  })
+
   it('saves an edited time and break', async () => {
     const user = userEvent.setup()
     render(<ScheduleEdit />)

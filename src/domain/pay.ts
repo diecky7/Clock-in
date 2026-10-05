@@ -59,6 +59,8 @@ export function computeWeek(input: {
     g.entries.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0))
     const ot = overtimeOn.get(g.employerId) ?? false // unknown employer: no overtime
     let acc = 0
+    let regularExact = 0
+    let overtimeExact = 0
     for (const e of g.entries) {
       const m = shiftMinutes(e)
       const regular = ot ? Math.max(0, Math.min(m, OVERTIME_THRESHOLD_MIN - acc)) : m
@@ -67,9 +69,12 @@ export function computeWeek(input: {
       g.minutes += m
       g.regularMinutes += regular
       g.overtimeMinutes += over
-      g.regularCents += Math.round((regular * e.rateCents) / 60)
-      if (over > 0) g.overtimeCents += Math.round((over * e.rateCents * 1.5) / 60)
+      regularExact += (regular * e.rateCents) / 60
+      overtimeExact += (over * e.rateCents * 1.5) / 60
     }
+    // round once per employer per kind so the PDF total matches hours x rate
+    g.regularCents = Math.round(regularExact)
+    g.overtimeCents = Math.round(overtimeExact)
     g.expensesCents = g.expenses.reduce((s, x) => s + x.amountCents, 0)
   }
 

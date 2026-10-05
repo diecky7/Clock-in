@@ -111,6 +111,22 @@ describe('EntryForm', () => {
     expect((await repo.getSettings()).recentPlaces[0]).toEqual(hall)
   })
 
+  it('a slow automatic GPS fix does not overwrite an address the user already chose', async () => {
+    const user = userEvent.setup()
+    const other: Place = { lat: 42.28, lon: -71.41, label: '12 Main St, Framingham, Massachusetts' }
+    let resolveGps!: (v: { lat: number; lon: number; accuracyM: number }) => void
+    vi.mocked(geo.getCurrentPosition).mockReturnValue(new Promise((r) => (resolveGps = r)))
+    vi.mocked(geo.reverseGeocode).mockResolvedValue(hall)
+    await repo.addRecentPlace(other)
+    await setup()
+    await user.click(screen.getByLabelText('Address'))
+    await user.click(await screen.findByRole('button', { name: other.label }))
+    resolveGps({ lat: 42.36, lon: -71.05, accuracyM: 5 })
+    await waitFor(() => expect(geo.reverseGeocode).toHaveBeenCalled())
+    await new Promise((r) => setTimeout(r, 20))
+    expect(screen.getByTestId('chosen-place')).toHaveTextContent(other.label)
+  })
+
   it('typing searches after a debounce and lists suggestions', async () => {
     const user = userEvent.setup()
     vi.mocked(geo.searchAddress).mockResolvedValue([hall])

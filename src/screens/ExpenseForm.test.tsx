@@ -82,6 +82,20 @@ describe('ExpenseForm', () => {
     expect(screen.getByLabelText('Amount')).toBeInTheDocument()
   })
 
+  it('a photo added and removed before saving is deleted, not left in storage', async () => {
+    const user = userEvent.setup()
+    await setup()
+    const put = vi.spyOn(repo, 'putPhoto')
+    await user.type(screen.getByLabelText('Amount'), '12')
+    await user.upload(screen.getByLabelText('Choose from library'), jpeg('a'))
+    await user.click(await screen.findByRole('button', { name: 'Remove photo 1' }))
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    await waitFor(async () => expect(await repo.listExpensesBetween('2026-10-07', '2026-10-07')).toHaveLength(1))
+    const id = await put.mock.results[0].value
+    expect(await repo.getPhoto(id)).toBeUndefined()
+    put.mockRestore()
+  })
+
   it('edit mode loads values; removing a photo and saving deletes its blob', async () => {
     const user = userEvent.setup()
     const p1 = await repo.putPhoto(new Blob(['1'], { type: 'image/jpeg' }))
