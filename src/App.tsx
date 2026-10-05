@@ -1,3 +1,18 @@
+import EmployerEdit from './screens/EmployerEdit'
+import ScheduleEdit from './screens/ScheduleEdit'
+import Settings from './screens/Settings'
+import { useRoute } from './router'
+
 export default function App() {
-  return <main aria-label="Time clock" />
+  const route = useRoute()
+  switch (route.path) {
+    case '/settings':
+      return <Settings />
+    case '/settings/schedule':
+      return <ScheduleEdit />
+    case '/settings/employer/:id':
+      return <EmployerEdit key={route.params.id} id={route.params.id} />
+    default:
+      return <main aria-label="Time clock" />
+  }
 }
