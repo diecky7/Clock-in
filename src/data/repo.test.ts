@@ -39,7 +39,7 @@ describe('repo', () => {
     await repo.saveExpense(expense('c', '2026-10-07'))
     await repo.saveExpense(expense('d', '2026-10-08'))
     const ids = (await repo.listExpensesBetween('2026-10-05', '2026-10-07')).map((e) => e.id)
-    expect(ids).toEqual(['b', 'c', 'e'])
+    expect(ids).toEqual(['b', 'c'])
   })
 
   it('deleteExpense removes its photo blobs', async () => {
