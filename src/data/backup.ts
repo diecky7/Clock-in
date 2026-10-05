@@ -66,8 +66,14 @@ const validEntry = (r: unknown): r is TimeEntry =>
 const validExpense = (r: unknown): r is Expense =>
   isObj(r) && isStr(r.id) && isStr(r.employerId) && isStr(r.date) && isStr(r.description) &&
   isNum(r.amountCents) && isArr(r.photoIds) && r.photoIds.every(isStr)
+const validDay = (d: unknown): boolean =>
+  d === null || (isObj(d) && isStr(d.in) && isStr(d.out) && isNum(d.breakMin))
+const validPlace = (p: unknown): boolean => isObj(p) && isNum(p.lat) && isNum(p.lon) && isStr(p.label)
 const validSettings = (r: unknown): r is Settings =>
-  isObj(r) && isNum(r.weekStartsOn) && isArr(r.schedule) && isArr(r.recentPlaces)
+  isObj(r) &&
+  isNum(r.weekStartsOn) && Number.isInteger(r.weekStartsOn) && r.weekStartsOn >= 0 && r.weekStartsOn <= 6 &&
+  isArr(r.schedule) && r.schedule.length === 7 && r.schedule.every(validDay) &&
+  isArr(r.recentPlaces) && r.recentPlaces.every(validPlace)
 const validPhoto = (r: unknown): r is PhotoJson =>
   isObj(r) && isStr(r.id) && isStr(r.type) && isStr(r.data)
 

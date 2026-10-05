@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { BackupError, exportBackup, importBackup } from '../data/backup'
 import * as repo from '../data/repo'
 import { Screen, Section, inputCls } from '../components/ui'
 import { activeEmployers } from '../domain/employers'
@@ -22,6 +23,16 @@ export default function Settings() {
   const [employers, setEmployers] = useState<Employer[]>([])
   const [settings, setSettings] = useState<SettingsData | null>(null)
 
+  const [pendingImport, setPendingImport] = useState<File | null>(null)
+  const [dataMsg, setDataMsg] = useState<{ text: string; error: boolean } | null>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
+
+  const reload = useCallback(async () => {
+    const [e, s] = await Promise.all([repo.listEmployers(), repo.getSettings()])
+    setEmployers(e)
+    setSettings(s)
+  }, [])
+
   useEffect(() => {
     let alive = true
     void Promise.all([repo.listEmployers(), repo.getSettings()]).then(([e, s]) => {
@@ -33,6 +44,43 @@ export default function Settings() {
       alive = false
     }
   }, [])
+
+  async function doExport() {
+    setDataMsg(null)
+    try {
+      const blob = await exportBackup()
+      const file = new File([blob], `clock-in-backup-${today()}.json`, { type: 'application/json' })
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file] })
+      } else {
+        const url = URL.createObjectURL(file)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.name
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      }
+    } catch (err) {
+      if ((err as { name?: string }).name === 'AbortError') return // share sheet dismissed
+      setDataMsg({ text: "Couldn't create the backup.", error: true })
+    }
+  }
+
+  async function doImport() {
+    const file = pendingImport
+    setPendingImport(null)
+    if (!file) return
+    try {
+      await importBackup(file)
+      await reload()
+      setDataMsg({ text: 'Backup restored.', error: false })
+    } catch (err) {
+      setDataMsg({
+        text: err instanceof BackupError ? err.message : "Couldn't restore the backup. Your existing data was not changed.",
+        error: true,
+      })
+    }
+  }
 
   async function setWeekStart(v: number) {
     if (!settings) return
@@ -88,16 +136,54 @@ export default function Settings() {
 
       <Section title="Data">
         <div className={divider}>
-          <button type="button" id="export-backup" className={rowCls}>
+          <button type="button" className={rowCls} onClick={() => void doExport()}>
             Export backup
           </button>
         </div>
         <div className={divider}>
-          <button type="button" id="import-backup" className={rowCls}>
+          <button type="button" className={rowCls} onClick={() => fileInput.current?.click()}>
             Import backup
           </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="application/json,.json"
+            aria-label="Backup file"
+            className="sr-only"
+            tabIndex={-1}
+            onChange={(e) => {
+              const f = e.target.files?.[0] ?? null
+              e.target.value = ''
+              setDataMsg(null)
+              setPendingImport(f)
+            }}
+          />
         </div>
       </Section>
+      {dataMsg && (
+        <p role={dataMsg.error ? 'alert' : 'status'} className={`mt-3 text-sm ${dataMsg.error ? 'text-danger' : 'text-muted'}`}>
+          {dataMsg.text}
+        </p>
+      )}
+      {pendingImport && (
+        <div className="fixed inset-0 z-20 flex items-end bg-black/40" onClick={() => setPendingImport(null)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Replace data"
+            className="mx-auto w-full max-w-md space-y-2 rounded-t-3xl bg-bg p-4 pb-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="px-2 py-3 text-center text-base">Replace all data on this device?</p>
+            <button type="button" className="min-h-12 w-full rounded-xl bg-danger font-medium text-white" onClick={() => void doImport()}>
+              Replace
+            </button>
+            <button type="button" className="min-h-12 w-full rounded-xl text-muted" onClick={() => setPendingImport(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </Screen>
   )
 }
