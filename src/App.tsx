@@ -1,5 +1,6 @@
 import EntryForm from './screens/EntryForm'
 import ExpenseForm from './screens/ExpenseForm'
+import Export from './screens/Export'
 import Home from './screens/Home'
 import EmployerEdit from './screens/EmployerEdit'
 import ScheduleEdit from './screens/ScheduleEdit'
@@ -23,6 +24,8 @@ export default function App() {
       return <ExpenseForm key="new" />
     case '/expense/:id':
       return <ExpenseForm key={route.params.id} id={route.params.id} />
+    case '/export':
+      return <Export key={route.params.week ?? 'now'} week={route.params.week} />
     default:
       return <Home />
   }

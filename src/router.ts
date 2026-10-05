@@ -18,7 +18,9 @@ const PATTERNS = [
 ]
 
 export function parseHash(hash: string): Route {
-  const path = hash.replace(/^#/, '').split('?')[0] || '/'
+  const [rawPath, rawQuery = ''] = hash.replace(/^#/, '').split('?')
+  const path = rawPath || '/'
+  const query = Object.fromEntries(new URLSearchParams(rawQuery))
   const segs = path.split('/').filter(Boolean)
   for (const pattern of PATTERNS) {
     const pat = pattern.split('/').filter(Boolean)
@@ -30,9 +32,9 @@ export function parseHash(hash: string): Route {
       else if (p !== segs[i]) ok = false
     })
     // literal routes (e.g. /entry/new) are listed before their :id twin
-    if (ok) return { path: pattern, params }
+    if (ok) return { path: pattern, params: { ...query, ...params } }
   }
-  return { path: '/', params: {} }
+  return { path: '/', params: query }
 }
 
 function subscribe(cb: () => void) {
