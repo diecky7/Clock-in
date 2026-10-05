@@ -160,7 +160,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         <button type="button" aria-label="Settings" className={iconBtn} onClick={() => navigate('/settings')}>
           <GearIcon />
         </button>
-        <button type="button" aria-label="Export" className={iconBtn} onClick={() => navigate('/export')}>
+        <button type="button" aria-label="Export" className={iconBtn} onClick={() => navigate(`/export?week=${weekStart}`)}>
           <ShareIcon />
         </button>
       </header>
