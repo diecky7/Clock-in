@@ -84,7 +84,7 @@ export function buildReportModel(
     : []
   const photos = exps.flatMap(x => x.photoIds.map(photoId => ({ x, photoId })))
   const receipts: ReportReceipt[] = photos.map(({ x, photoId }, i) => ({
-    description: x.description,
+    description: x.description.trim() || 'Expense',
     employerName: employer.name,
     dateLabel: dateLabel(x.date),
     amountCents: x.amountCents,
@@ -100,7 +100,7 @@ export function buildReportModel(
     valueLines,
     totalCents: valueLines.length ? valueLines.reduce((s, l) => s + l.cents, 0) : null,
     days,
-    expenseItems: exps.map(x => ({ description: x.description, cents: x.amountCents })),
+    expenseItems: exps.map(x => ({ description: x.description.trim() || 'Expense', cents: x.amountCents })),
     receipts,
   }
   if (o.hourlyRate) model.rateLabel = rateLabelFor(sorted, employer, weekStart)
