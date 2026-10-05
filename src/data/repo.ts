@@ -28,7 +28,9 @@ export async function saveEmployer(e: Employer): Promise<void> {
 }
 
 export async function listEntriesBetween(fromDate: string, toDate: string): Promise<TimeEntry[]> {
-  const range = IDBKeyRange.bound(`${fromDate}T00:00`, `${toDate}T23:59`)
+  if (fromDate > toDate) return []
+  // Upper bound sorts after any `${toDate}T…` string, even with seconds.
+  const range = IDBKeyRange.bound(`${fromDate}T00:00`, `${toDate}T\uffff`)
   return (await getDb()).getAllFromIndex(STORE_ENTRIES, 'start', range)
 }
 export async function getEntry(id: string): Promise<TimeEntry | undefined> {
@@ -42,6 +44,7 @@ export async function deleteEntry(id: string): Promise<void> {
 }
 
 export async function listExpensesBetween(fromDate: string, toDate: string): Promise<Expense[]> {
+  if (fromDate > toDate) return []
   const range = IDBKeyRange.bound(fromDate, toDate)
   return (await getDb()).getAllFromIndex(STORE_EXPENSES, 'date', range)
 }

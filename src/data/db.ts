@@ -44,6 +44,16 @@ export function getDb(): Promise<IDBPDatabase<ClockDB>> {
       db.createObjectStore(STORE_PHOTOS, { keyPath: 'id' })
       db.createObjectStore(STORE_SETTINGS)
     },
+    // iOS may kill the connection when the app is backgrounded; reopen on next use.
+    terminated() {
+      dbPromise = null
+    },
+    blocking() {
+      dbPromise = null
+    },
+  })
+  dbPromise.catch(() => {
+    dbPromise = null
   })
   return dbPromise
 }

@@ -19,9 +19,10 @@ describe('repo', () => {
     await repo.saveEntry(entry('a', '2026-10-04T07:00'))
     await repo.saveEntry(entry('b', '2026-10-05T07:00'))
     await repo.saveEntry(entry('c', '2026-10-07T23:30'))
+    await repo.saveEntry(entry('e', '2026-10-07T23:59:30'))
     await repo.saveEntry(entry('d', '2026-10-08T00:00'))
     const ids = (await repo.listEntriesBetween('2026-10-05', '2026-10-07')).map((e) => e.id)
-    expect(ids).toEqual(['b', 'c'])
+    expect(ids).toEqual(['b', 'c', 'e'])
   })
 
   it('upserts and deletes entries', async () => {
@@ -38,7 +39,7 @@ describe('repo', () => {
     await repo.saveExpense(expense('c', '2026-10-07'))
     await repo.saveExpense(expense('d', '2026-10-08'))
     const ids = (await repo.listExpensesBetween('2026-10-05', '2026-10-07')).map((e) => e.id)
-    expect(ids).toEqual(['b', 'c'])
+    expect(ids).toEqual(['b', 'c', 'e'])
   })
 
   it('deleteExpense removes its photo blobs', async () => {
