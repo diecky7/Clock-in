@@ -95,9 +95,22 @@ describe('Export', () => {
     click.mockRestore()
   })
 
-  it('shows an empty state and disables sharing when the week has no data', async () => {
+  it('shows an empty state and no share button when the week has no data', async () => {
     render(<Export week="2026-10-04" />)
     expect(await screen.findByText('Nothing to export for this week')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Share PDF' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Share PDF' })).not.toBeInTheDocument()
+  })
+
+  it('asks for an employer instead of sharing when none is selected', async () => {
+    await seed()
+    const user = userEvent.setup()
+    render(<Export week="2026-10-04" />)
+    for (const box of await screen.findAllByRole('checkbox')) {
+      if ((box as HTMLInputElement).checked) await user.click(box)
+    }
+    const share = screen.getByRole('button', { name: 'Share PDF' })
+    expect(share).toBeEnabled()
+    await user.click(share)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Select at least one employer')
   })
 })

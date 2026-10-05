@@ -50,8 +50,8 @@ export default function ScheduleEdit() {
                 </span>
               </div>
               {day && (
-                <div className="mt-3 grid grid-cols-3 gap-2 text-sm text-muted">
-                  <label className="grid gap-1">
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-muted">
+                  <label className="grid min-w-0 gap-1">
                     In
                     <input
                       type="time"
@@ -61,7 +61,7 @@ export default function ScheduleEdit() {
                       onChange={(e) => update(i, { ...day, in: e.target.value })}
                     />
                   </label>
-                  <label className="grid gap-1">
+                  <label className="grid min-w-0 gap-1">
                     Out
                     <input
                       type="time"
@@ -71,8 +71,8 @@ export default function ScheduleEdit() {
                       onChange={(e) => update(i, { ...day, out: e.target.value })}
                     />
                   </label>
-                  <label className="grid gap-1">
-                    Break
+                  <label className="col-span-2 grid min-w-0 gap-1">
+                    Break (min)
                     <input
                       type="number"
                       inputMode="numeric"

@@ -64,7 +64,11 @@ export default function Export({ week }: { week?: string }) {
   const selected = rows.filter((r) => !excluded.has(r.employerId))
 
   async function share() {
-    if (!weekStart || selected.length === 0 || busy) return
+    if (!weekStart || busy) return
+    if (selected.length === 0) {
+      setError('Select at least one employer')
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -142,11 +146,13 @@ export default function Export({ week }: { week?: string }) {
           {error}
         </p>
       )}
-      <div className="mt-8">
-        <PrimaryButton type="button" disabled={busy || selected.length === 0} onClick={() => void share()}>
-          {busy ? 'Creating PDF…' : 'Share PDF'}
-        </PrimaryButton>
-      </div>
+      {rows.length > 0 && (
+        <div className="mt-8">
+          <PrimaryButton type="button" disabled={busy} onClick={() => void share()}>
+            {busy ? 'Creating PDF…' : 'Share PDF'}
+          </PrimaryButton>
+        </div>
+      )}
     </Screen>
   )
 }
