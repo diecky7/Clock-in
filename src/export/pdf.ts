@@ -7,7 +7,7 @@ const W = 1080
 const H = 1920
 const MARGIN = 90
 const CW = W - MARGIN * 2
-const BOTTOM = 170 // keeps clear of the footer
+const BOTTOM = 135 // keeps clear of the footer
 const INK = rgb(0.07, 0.07, 0.07)
 const GREY = rgb(0.45, 0.45, 0.45)
 const LIGHT = rgb(0.86, 0.86, 0.86)
@@ -135,26 +135,26 @@ class Layout {
   }
 
   heading(m: ReportModel, label: string) {
-    this.ensure(m, 140)
+    this.ensure(m, 120)
     text(this.page, label, this.top, { size: 24, font: this.f.regular, color: GREY, spacing: 5 })
     rule(this.page, this.top + 44)
-    this.top += 64
+    this.top += 58
   }
 
   report(m: ReportModel) {
     const { regular, bold } = this.f
     const p = this.newPage()
-    text(p, 'TIME REPORT', 130, { size: 26, font: regular, color: GREY, align: 'center', spacing: 6 })
+    text(p, 'TIME REPORT', 105, { size: 26, font: regular, color: GREY, align: 'center', spacing: 6 })
     let nameSize = 68
     while (nameSize > 40 && bold.widthOfTextAtSize(sanitizeForPdf(m.employerName), nameSize) > CW) nameSize -= 2
-    text(p, m.employerName, 215 + (68 - nameSize) / 2, { size: nameSize, font: bold, align: 'center' })
-    text(p, m.weekLabel, 310, { size: 38, font: regular, color: GREY, align: 'center' })
-    let y = 370
-    if (m.rateLabel) { text(p, m.rateLabel, y, { size: 30, font: regular, color: GREY, align: 'center' }); y += 50 }
+    text(p, m.employerName, 165 + (68 - nameSize) / 2, { size: nameSize, font: bold, align: 'center' })
+    text(p, m.weekLabel, 255, { size: 38, font: regular, color: GREY, align: 'center' })
+    let y = 312
+    if (m.rateLabel) { text(p, m.rateLabel, y, { size: 30, font: regular, color: GREY, align: 'center' }); y += 46 }
 
-    text(p, 'TOTAL HOURS', y + 90, { size: 24, font: regular, color: GREY, align: 'center', spacing: 5 })
-    text(p, m.hoursTotal, y + 140, { size: 170, font: bold, align: 'center' })
-    this.top = y + 380
+    text(p, 'TOTAL HOURS', y + 70, { size: 24, font: regular, color: GREY, align: 'center', spacing: 5 })
+    text(p, m.hoursTotal, y + 108, { size: 136, font: bold, align: 'center' })
+    this.top = y + 292
 
     if (m.valueLines.length) {
       for (const l of m.valueLines) {
@@ -163,7 +163,7 @@ class Layout {
         const lw = bold.widthOfTextAtSize(sanitizeForPdf(l.label), 34)
         if (l.detail) text(this.page, l.detail, this.top + 4, { size: 28, font: regular, color: GREY, x: MARGIN + Math.min(lw, 400) + 20, maxWidth: 260 })
         text(this.page, formatUSD(l.cents), this.top, { size: 34, font: regular, align: 'right', maxWidth: 280, x: W - MARGIN })
-        this.top += 70
+        this.top += 62
       }
       if (m.totalCents !== null) {
         this.ensure(m, 110)
@@ -171,33 +171,33 @@ class Layout {
         this.top += 30
         text(this.page, 'Total', this.top, { size: 44, font: bold })
         text(this.page, formatUSD(m.totalCents), this.top, { size: 44, font: bold, align: 'right', maxWidth: 400, x: W - MARGIN })
-        this.top += 90
+        this.top += 80
       }
     }
 
     if (m.expenseItems.length) {
-      this.top += 40
+      this.top += 26
       this.heading(m, 'EXPENSES')
       for (const x of m.expenseItems) {
         this.ensure(m, 56)
         text(this.page, x.description, this.top, { size: 30, font: regular, maxWidth: CW - 260 })
         text(this.page, formatUSD(x.cents), this.top, { size: 30, font: regular, align: 'right', maxWidth: 240, x: W - MARGIN })
-        this.top += 56
+        this.top += 50
       }
     }
 
     if (m.days.length) {
-      this.top += 40
+      this.top += 26
       this.heading(m, 'DAYS')
       for (const d of m.days) {
-        const rowH = d.detail ? 112 : 78
+        const rowH = d.detail ? 94 : 66
         this.ensure(m, rowH)
         const pg = this.page
         text(pg, d.label, this.top, { size: 30, font: bold, maxWidth: 260 })
         if (d.times) text(pg, d.times, this.top + 1, { size: 28, font: regular, color: GREY, x: MARGIN + 290, maxWidth: 400 })
         text(pg, d.hours, this.top, { size: 30, font: bold, align: 'right', maxWidth: 160, x: W - MARGIN })
-        if (d.detail) text(pg, d.detail, this.top + 44, { size: 24, font: regular, color: GREY })
-        rule(pg, this.top + rowH - 20, rgb(0.93, 0.93, 0.93), 1.5)
+        if (d.detail) text(pg, d.detail, this.top + 40, { size: 24, font: regular, color: GREY })
+        rule(pg, this.top + rowH - 14, rgb(0.93, 0.93, 0.93), 1.5)
         this.top += rowH
       }
     }
