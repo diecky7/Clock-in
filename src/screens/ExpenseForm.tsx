@@ -98,8 +98,9 @@ export default function ExpenseForm({ id, initialDate }: { id?: string; initialD
     try {
       await repo.saveExpense(expense)
       saved.current = true
-      // Photos taken out of an existing expense are deleted with it.
-      for (const p of existing?.photoIds ?? []) if (!photoIds.includes(p)) await repo.deletePhoto(p)
+      // Photos taken out are deleted: both ones the expense already had and ones added then removed in this session.
+      const dropped = new Set([...(existing?.photoIds ?? []), ...added.current])
+      for (const p of dropped) if (!photoIds.includes(p)) await repo.deletePhoto(p)
       navigate('/')
     } catch {
       setSaveError("Couldn't save. Free some space on your iPhone and try again.")

@@ -33,6 +33,12 @@ export function formatDateTime(s: string): string {
   return `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()} · ${h12}:${mm} ${h < 12 ? 'AM' : 'PM'}`
 }
 
+/** 'YYYY-MM-DD' -> 'MM/DD/YYYY' (US format); anything else is returned unchanged. */
+export function formatDate(s: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : s
+}
+
 export function formatHours(minutes: number): string {
   const hours = minutes / 60
   const one = Math.round(hours * 10) / 10

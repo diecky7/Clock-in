@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BackupError, exportBackup, importBackup } from '../data/backup'
+import { shareOrDownload } from '../data/shareFile'
 import * as repo from '../data/repo'
 import { Screen, Section, inputCls } from '../components/ui'
 import { activeEmployers } from '../domain/employers'
@@ -50,16 +51,7 @@ export default function Settings() {
     try {
       const blob = await exportBackup()
       const file = new File([blob], `clock-in-backup-${today()}.json`, { type: 'application/json' })
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file] })
-      } else {
-        const url = URL.createObjectURL(file)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = file.name
-        a.click()
-        setTimeout(() => URL.revokeObjectURL(url), 10_000)
-      }
+      await shareOrDownload(file)
     } catch (err) {
       if ((err as { name?: string }).name === 'AbortError') return // share sheet dismissed
       setDataMsg({ text: "Couldn't create the backup.", error: true })

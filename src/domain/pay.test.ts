@@ -30,6 +30,16 @@ function hoursEntries(employerId: string, minutes: number, rateCents = 3200): Ti
 }
 
 describe('computeWeek', () => {
+  it('rounds once per employer per kind (no per-entry drift)', () => {
+    const days = ['05', '06', '07', '08', '09']
+    const entries = days.map(d => entry('A', `2026-10-${d}T07:00`, `2026-10-${d}T16:07`, 3333, 30))
+    const r = computeWeek({ weekStart: WS, entries, expenses: [], employers: [emp('A')] })
+    expect(r.regularMinutes).toBe(2400)
+    expect(r.overtimeMinutes).toBe(185)
+    expect(r.regularCents).toBe(133320)
+    expect(r.overtimeCents).toBe(15415)
+    expect(r.totalCents).toBe(133320 + 15415)
+  })
   it('(a) 38.5h no overtime', () => {
     const r = computeWeek({ weekStart: WS, entries: hoursEntries('A', 2310), expenses: [], employers: [emp('A')] })
     expect(r.overtimeMinutes).toBe(0)

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PrimaryButton, Screen, Section, Switch } from '../components/ui'
+import { shareOrDownload } from '../data/shareFile'
 import * as repo from '../data/repo'
 import { computeWeek } from '../domain/pay'
 import { today } from '../domain/today'
@@ -78,16 +79,7 @@ export default function Export({ week }: { week?: string }) {
       })
       const bytes = await renderPdf(models, repo.getPhoto)
       const file = new File([bytes as BlobPart], `time-report-${weekStart}.pdf`, { type: 'application/pdf' })
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file] })
-      } else {
-        const url = URL.createObjectURL(file)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = file.name
-        a.click()
-        setTimeout(() => URL.revokeObjectURL(url), 10_000)
-      }
+      await shareOrDownload(file)
     } catch (err) {
       if ((err as { name?: string }).name !== 'AbortError') setError("Couldn't create the PDF. Please try again.")
     } finally {

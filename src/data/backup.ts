@@ -57,15 +57,21 @@ const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFin
 const isBool = (v: unknown): v is boolean => typeof v === 'boolean'
 const isArr = (v: unknown): v is unknown[] => Array.isArray(v)
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
+const isCents = (v: unknown): v is number => isNum(v) && Number.isInteger(v) && v >= 0
+const isDate = (v: unknown): v is string => isStr(v) && DATE_RE.test(v)
+const isDateTime = (v: unknown): v is string => isStr(v) && DATETIME_RE.test(v)
+
 const validEmployer = (r: unknown): r is Employer =>
   isObj(r) && isStr(r.id) && isStr(r.name) && isBool(r.overtimeEnabled) && isBool(r.archived) &&
-  isArr(r.rates) && r.rates.every((x) => isObj(x) && isStr(x.from) && isNum(x.cents))
+  isArr(r.rates) && r.rates.every((x) => isObj(x) && isDate(x.from) && isCents(x.cents))
 const validEntry = (r: unknown): r is TimeEntry =>
-  isObj(r) && isStr(r.id) && isStr(r.employerId) && isStr(r.start) && isStr(r.end) &&
-  isNum(r.breakMin) && isNum(r.rateCents)
+  isObj(r) && isStr(r.id) && isStr(r.employerId) && r.employerId !== '' &&
+  isDateTime(r.start) && isDateTime(r.end) && isCents(r.breakMin) && isCents(r.rateCents)
 const validExpense = (r: unknown): r is Expense =>
-  isObj(r) && isStr(r.id) && isStr(r.employerId) && isStr(r.date) && isStr(r.description) &&
-  isNum(r.amountCents) && isArr(r.photoIds) && r.photoIds.every(isStr)
+  isObj(r) && isStr(r.id) && isStr(r.employerId) && isDate(r.date) && isStr(r.description) &&
+  isCents(r.amountCents) && isArr(r.photoIds) && r.photoIds.every(isStr)
 const validDay = (d: unknown): boolean =>
   d === null || (isObj(d) && isStr(d.in) && isStr(d.out) && isNum(d.breakMin))
 const validPlace = (p: unknown): boolean => isObj(p) && isNum(p.lat) && isNum(p.lon) && isStr(p.label)
@@ -111,6 +117,10 @@ async function parseBackup(file: Blob): Promise<Parsed> {
   if (!employers.every(validEmployer) || !entries.every(validEntry) || !expenses.every(validExpense) ||
       !photos.every(validPhoto)) throw new BackupError(INVALID)
   if (settings !== null && !validSettings(settings)) throw new BackupError(INVALID)
+  const photoIds = new Set((photos as PhotoJson[]).map((p) => p.id))
+  if (!(expenses as Expense[]).every((x) => x.photoIds.every((id) => photoIds.has(id)))) {
+    throw new BackupError(`${INVALID} An expense refers to a photo that is missing from the file.`)
+  }
   return {
     employers, entries, expenses, settings: settings ?? null,
     photos: (photos as PhotoJson[]).map(decodePhoto),

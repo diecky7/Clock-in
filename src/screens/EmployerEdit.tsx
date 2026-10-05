@@ -3,6 +3,7 @@ import * as repo from '../data/repo'
 import { Field, PrimaryButton, Screen, Switch, inputCls } from '../components/ui'
 import { formatUSD, parseUSD } from '../domain/money'
 import { addRateChange, rateOn } from '../domain/rates'
+import { formatDate } from '../domain/time'
 import { today } from '../domain/today'
 import type { Employer } from '../domain/types'
 import { navigate } from '../router'
@@ -96,7 +97,7 @@ export default function EmployerEdit({ id }: { id: string }) {
             {[...employer.rates].reverse().map((r) => (
               <li key={r.from} className="flex min-h-12 items-center justify-between border-t border-border px-4 first:border-t-0">
                 <span>{formatUSD(r.cents)}</span>
-                <span className="text-sm text-muted">from {r.from}</span>
+                <span className="text-sm text-muted">from {formatDate(r.from)}</span>
               </li>
             ))}
           </ul>
