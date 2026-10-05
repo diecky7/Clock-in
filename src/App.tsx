@@ -1,4 +1,5 @@
 import EntryForm from './screens/EntryForm'
+import ExpenseForm from './screens/ExpenseForm'
 import Home from './screens/Home'
 import EmployerEdit from './screens/EmployerEdit'
 import ScheduleEdit from './screens/ScheduleEdit'
@@ -18,6 +19,10 @@ export default function App() {
       return <EntryForm key="new" />
     case '/entry/:id':
       return <EntryForm key={route.params.id} id={route.params.id} />
+    case '/expense/new':
+      return <ExpenseForm key="new" />
+    case '/expense/:id':
+      return <ExpenseForm key={route.params.id} id={route.params.id} />
     default:
       return <Home />
   }
