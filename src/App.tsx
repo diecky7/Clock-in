@@ -1,3 +1,4 @@
+import Home from './screens/Home'
 import EmployerEdit from './screens/EmployerEdit'
 import ScheduleEdit from './screens/ScheduleEdit'
 import Settings from './screens/Settings'
@@ -13,6 +14,6 @@ export default function App() {
     case '/settings/employer/:id':
       return <EmployerEdit key={route.params.id} id={route.params.id} />
     default:
-      return <main aria-label="Time clock" />
+      return <Home />
   }
 }
