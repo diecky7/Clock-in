@@ -76,11 +76,15 @@ export function Switch({
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative h-8 w-14 shrink-0 rounded-full border border-border transition-colors ${checked ? 'bg-accent' : 'bg-bg'}`}
+      className="grid h-11 w-14 shrink-0 place-items-center"
     >
       <span
-        className={`absolute top-0.5 size-6 rounded-full transition-all ${checked ? 'left-7 bg-accent-fg' : 'left-0.5 bg-muted'}`}
-      />
+        className={`relative block h-8 w-14 rounded-full border border-border transition-colors ${checked ? 'bg-accent' : 'bg-bg'}`}
+      >
+        <span
+          className={`absolute top-0.5 size-6 rounded-full transition-all ${checked ? 'left-7 bg-accent-fg' : 'left-0.5 bg-muted'}`}
+        />
+      </span>
     </button>
   )
 }

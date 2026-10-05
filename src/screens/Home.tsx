@@ -156,6 +156,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
 
   return (
     <main aria-label="Time clock" className="mx-auto min-h-dvh max-w-md px-4 pb-28">
+      <h1 className="sr-only">Time clock</h1>
       <header className="flex min-h-14 items-center justify-between">
         <button type="button" aria-label="Settings" className={iconBtn} onClick={() => navigate('/settings')}>
           <GearIcon />
