@@ -1,5 +1,5 @@
 export async function resizeImage(file: Blob, maxEdge = 1600): Promise<Blob> {
-  const bitmap = await createImageBitmap(file)
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
   try {
     const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height))
     const w = Math.max(1, Math.round(bitmap.width * scale))
