@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { exportBackup } from '../data/backup'
 import { resetDbForTests } from '../data/db'
 import * as repo from '../data/repo'
 import { activeEmployers } from '../domain/employers'
@@ -136,5 +137,49 @@ describe('ScheduleEdit', () => {
     await user.clear(brk)
     await user.type(brk, '45')
     await waitFor(async () => expect((await repo.getSettings()).schedule[2]?.breakMin).toBe(45))
+  })
+})
+
+describe('Settings backup', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('Export backup shares a .json file when the share sheet supports files', async () => {
+    const share = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { ...navigator, canShare: () => true, share })
+    const user = userEvent.setup()
+    render(<Settings />)
+    await user.click(await screen.findByRole('button', { name: 'Export backup' }))
+    await waitFor(() => expect(share).toHaveBeenCalledTimes(1))
+    const file = share.mock.calls[0][0].files[0] as File
+    expect(file.name).toMatch(/^clock-in-backup-\d{4}-\d{2}-\d{2}\.json$/)
+  })
+
+  it('Import backup asks before replacing, then restores', async () => {
+    await repo.saveEmployer(acme)
+    const backup = await exportBackup()
+    await repo.saveEmployer({ ...acme, id: 'extra', name: 'Extra Co' })
+    const user = userEvent.setup()
+    render(<Settings />)
+    await user.upload(await screen.findByLabelText('Backup file'), new File([backup], 'b.json', { type: 'application/json' }))
+    expect(await screen.findByText('Replace all data on this device?')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Replace' }))
+    expect(await screen.findByText('Backup restored.')).toBeInTheDocument()
+    expect((await repo.listEmployers()).map((e) => e.name)).toEqual(['Acme'])
+  })
+
+  it('Cancel leaves data alone; an invalid file shows the error and keeps data', async () => {
+    await repo.saveEmployer(acme)
+    const user = userEvent.setup()
+    render(<Settings />)
+    const input = await screen.findByLabelText('Backup file')
+    await user.upload(input, new File(['nope'], 'b.json', { type: 'application/json' }))
+    await user.click(await screen.findByRole('button', { name: 'Cancel' }))
+    expect(await repo.listEmployers()).toHaveLength(1)
+    await user.upload(input, new File(['nope'], 'b.json', { type: 'application/json' }))
+    await user.click(await screen.findByRole('button', { name: 'Replace' }))
+    expect(await screen.findByText("This isn't a valid backup file.")).toBeInTheDocument()
+    expect(await repo.listEmployers()).toHaveLength(1)
   })
 })

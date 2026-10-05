@@ -99,6 +99,16 @@ describe('backup', () => {
     await expectRejectedUnchanged(blob(rest))
   })
 
+  it('rejects malformed settings', async () => {
+    const week = Array.from({ length: 7 }, () => null)
+    for (const settings of [
+      { weekStartsOn: 9, schedule: week, recentPlaces: [] },
+      { weekStartsOn: 0, schedule: [1], recentPlaces: [] },
+      { weekStartsOn: 0, schedule: week, recentPlaces: [{ lat: 'x' }] },
+    ])
+      await expectRejectedUnchanged(blob({ ...validDoc(), settings }))
+  })
+
   it('rejects a record with a wrong field type', async () => {
     await expectRejectedUnchanged(blob({ ...validDoc(), entries: [{ ...entry('t9'), breakMin: '30' }] }))
   })
