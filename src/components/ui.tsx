@@ -29,7 +29,7 @@ export function Section({ title, children }: { title: string; children: ReactNod
   return (
     <section className="mt-6" aria-label={title}>
       <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-muted">{title}</h2>
-      <div className="overflow-hidden rounded-2xl bg-surface">{children}</div>
+      <div className="overflow-hidden rounded-2xl bg-surface p-2">{children}</div>
     </section>
   )
 }
@@ -89,7 +89,7 @@ export function PrimaryButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...props}
-      className={`min-h-12 w-full rounded-full bg-accent px-6 text-base font-semibold text-accent-fg disabled:opacity-50 ${props.className ?? ''}`}
+      className={`min-h-12 w-full rounded-full bg-accent px-6 text-base font-semibold text-accent-fg disabled:opacity-70 ${props.className ?? ''}`}
     />
   )
 }
