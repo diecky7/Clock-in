@@ -3,7 +3,7 @@ import Modal from '../components/Modal'
 import { CopyIcon, FoldedMapIcon, NavArrowIcon, RoutePinIcon } from '../components/icons'
 import { Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
-import { abbreviateStreet, copyText, decimalCoords, dmsCoords, kindLabel, shortAddress, stateCode } from '../location/address'
+import { copyText, decimalCoords, dmsCoords, fullAddress, kindLabel, shortAddress } from '../location/address'
 import { directionLinks } from '../location/directions'
 import { formatDate, formatHours } from '../domain/time'
 import type { Employer, Place } from '../domain/types'
@@ -93,13 +93,14 @@ function DirectionsDialog({ place, employers, onClose }: { place: Place; employe
         <Group
           title="Address"
           rows={[
+            ['Full address', fullAddress(place)],
             ['Place', d.name],
             ['Number', d.number],
-            ['Street', d.street ? abbreviateStreet(d.street) : undefined],
+            ['Street', d.street],
             ['Neighborhood', d.neighborhood],
             ['City', d.city],
             ['County', d.county],
-            ['State', d.state ? stateCode(d.state) : undefined],
+            ['State', d.state],
             ['ZIP code', d.zip],
             ['Country', d.country],
             ['Type', kindLabel(d.kind) || undefined],
@@ -115,16 +116,45 @@ function DirectionsDialog({ place, employers, onClose }: { place: Place; employe
           ]}
         />
         {history && history.times > 0 && (
-          <Group
-            title="Your work here"
-            rows={[
-              ['Times worked', String(history.times)],
-              ['Total hours', `${formatHours(history.minutes)} h`],
-              ['First time', history.first ? formatDate(history.first) : undefined],
-              ['Last time', history.last ? formatDate(history.last) : undefined],
-              ['Employers', history.employerIds.map((id) => names.get(id) ?? 'Employer').join(', ')],
-            ]}
-          />
+          <>
+            <Group
+              title="Your work here"
+              rows={[
+                ['Times worked', String(history.times)],
+                ['Total hours', `${formatHours(history.minutes)} h`],
+                ['First time', history.first ? formatDate(history.first) : undefined],
+                ['Last time', history.last ? formatDate(history.last) : undefined],
+              ]}
+            />
+            <section aria-label="Employers">
+              <h2 className="mb-1 mt-4 text-xs font-medium uppercase tracking-wide text-muted">Employers</h2>
+              <div className="divide-y divide-border overflow-hidden rounded-2xl bg-bg">
+                {history.byEmployer.map((v) => (
+                  <details key={v.employerId} className="group">
+                    <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                      <span>{names.get(v.employerId) ?? 'Employer'}</span>
+                      <span aria-hidden className="text-muted transition-transform group-open:rotate-90">›</span>
+                    </summary>
+                    <dl className="divide-y divide-border border-t border-border text-sm">
+                      {(
+                        [
+                          ['Times worked', String(v.times)],
+                          ['Total hours', `${formatHours(v.minutes)} h`],
+                          ['First time', formatDate(v.first)],
+                          ['Last time', formatDate(v.last)],
+                        ] as const
+                      ).map(([k, val]) => (
+                        <div key={k} className="flex items-baseline justify-between gap-4 px-3 py-2.5">
+                          <dt className="text-muted">{k}</dt>
+                          <dd>{val}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </details>
+                ))}
+              </div>
+            </section>
+          </>
         )}
 
         <button type="button" className="mt-3 min-h-12 w-full text-base text-muted" onClick={onClose}>

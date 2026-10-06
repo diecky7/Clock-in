@@ -124,23 +124,40 @@ export async function listAllPlaces(): Promise<Place[]> {
   return all
 }
 
-export interface PlaceHistory {
+export interface EmployerVisits {
+  employerId: string
   times: number
+  minutes: number
+  first: string
+  last: string
+}
+
+export interface PlaceHistory extends Omit<EmployerVisits, 'employerId' | 'first' | 'last'> {
   first: string | null
   last: string | null
-  minutes: number
-  employerIds: string[]
+  /** One row per employer that worked here, most recent first. */
+  byEmployer: EmployerVisits[]
 }
 
 /** How often, when and for whom you worked at an address (matched by its label). */
 export async function placeHistory(label: string): Promise<PlaceHistory> {
   const entries = (await (await getDb()).getAll(STORE_ENTRIES)).filter((e) => e.place && placeKey(e.place.label) === placeKey(label))
-  const dates = entries.map((e) => e.start.slice(0, 10)).sort()
+  const byId = new Map<string, EmployerVisits>()
+  for (const e of entries) {
+    const date = e.start.slice(0, 10)
+    const v = byId.get(e.employerId) ?? { employerId: e.employerId, times: 0, minutes: 0, first: date, last: date }
+    v.times += 1
+    v.minutes += shiftMinutes(e)
+    if (date < v.first) v.first = date
+    if (date > v.last) v.last = date
+    byId.set(e.employerId, v)
+  }
+  const byEmployer = [...byId.values()].sort((a, b) => b.last.localeCompare(a.last))
   return {
     times: entries.length,
-    first: dates[0] ?? null,
-    last: dates[dates.length - 1] ?? null,
-    minutes: entries.reduce((sum, e) => sum + shiftMinutes(e), 0),
-    employerIds: [...new Set(entries.map((e) => e.employerId))],
+    minutes: byEmployer.reduce((sum, v) => sum + v.minutes, 0),
+    first: byEmployer.map((v) => v.first).sort()[0] ?? null,
+    last: byEmployer[0]?.last ?? null,
+    byEmployer,
   }
 }
