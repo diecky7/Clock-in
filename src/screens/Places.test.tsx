@@ -1,6 +1,6 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetDbForTests } from '../data/db'
 import * as repo from '../data/repo'
 import Places from './Places'
@@ -143,5 +143,27 @@ describe('Places', () => {
     expect(bay).toHaveProperty('open', true)
     expect(acme).toHaveProperty('open', false)
     expect(within(bay).getByText('8.0 h')).toBeInTheDocument()
+  })
+
+  it('looks up an old address without details when opened, shows it in full and remembers it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          display_name: 'x',
+          address: { house_number: '12', road: 'Shady Lane Drive', city: 'Burlington', state: 'Massachusetts', postcode: '01803', country: 'United States' },
+        }),
+      }),
+    )
+    await repo.addRecentPlace({ lat: 42.49, lon: -71.2, label: '12 Shady Ln Dr, Burlington, MA' })
+    const user = userEvent.setup()
+    render(<Places />)
+    await user.click(await screen.findByRole('button', { name: /^Directions to/ }))
+    const box = screen.getByRole('dialog')
+    expect(await within(box).findByText('12 Shady Lane Drive, Burlington, Massachusetts 01803')).toBeInTheDocument()
+    expect(within(box).queryByText('United States')).not.toBeInTheDocument()
+    await waitFor(async () => expect((await repo.getSettings()).recentPlaces[0].detail?.zip).toBe('01803'))
+    vi.unstubAllGlobals()
   })
 })

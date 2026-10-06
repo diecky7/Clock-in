@@ -105,6 +105,17 @@ export async function addRecentPlace(p: Place): Promise<void> {
   await saveSettings({ ...s, recentPlaces: [{ ...p, label: shortAddress(p.label) }, ...rest] })
 }
 
+/** Remembers the full lookup details of an address (also adds it to the address book if only entries knew it). */
+export async function savePlaceDetail(p: Place, detail: NonNullable<Place['detail']>): Promise<void> {
+  const s = await getSettings()
+  const key = placeKey(p.label)
+  const known = s.recentPlaces.some((x) => placeKey(x.label) === key)
+  const recentPlaces = known
+    ? s.recentPlaces.map((x) => (placeKey(x.label) === key ? { ...x, detail } : x))
+    : [...s.recentPlaces, { ...p, label: shortAddress(p.label), detail }]
+  await saveSettings({ ...s, recentPlaces })
+}
+
 /**
  * Every address ever worked, most recently used first, without duplicates.
  * Merges the saved address book with the places stored on past entries.
