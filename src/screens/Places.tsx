@@ -3,8 +3,9 @@ import Modal from '../components/Modal'
 import { CopyIcon, FoldedMapIcon, NavArrowIcon, RoutePinIcon } from '../components/icons'
 import { Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
-import { copyText, decimalCoords, dmsCoords, fullAddress, kindLabel, shortAddress } from '../location/address'
+import { copyAddress, copyText, decimalCoords, dmsCoords, fullAddress, kindLabel, shortAddress } from '../location/address'
 import { directionLinks } from '../location/directions'
+import { reverseGeocode } from '../location/geocode'
 import { formatDate, formatHours } from '../domain/time'
 import type { Employer, Place } from '../domain/types'
 
@@ -30,10 +31,27 @@ function Group({ title, rows }: { title: string; rows: Row[] }) {
   )
 }
 
-function DirectionsDialog({ place, employers, onClose }: { place: Place; employers: Employer[]; onClose: () => void }) {
+function DirectionsDialog({ place: saved, employers, onClose }: { place: Place; employers: Employer[]; onClose: () => void }) {
+  const [place, setPlace] = useState(saved)
   const first = useRef<HTMLAnchorElement>(null)
   const [history, setHistory] = useState<repo.PlaceHistory | null>(null)
   const [copied, setCopied] = useState<'' | 'address' | 'coords'>('')
+
+  // Addresses saved before details were kept: look them up once, show them in full and remember the result.
+  useEffect(() => {
+    if (saved.detail) return
+    let alive = true
+    void reverseGeocode(saved.lat, saved.lon)
+      .then((r) => {
+        if (!alive || !r.detail) return
+        setPlace({ ...saved, detail: r.detail })
+        return repo.savePlaceDetail(saved, r.detail)
+      })
+      .catch(() => undefined) // offline: keep what we have
+    return () => {
+      alive = false
+    }
+  }, [saved])
 
   useEffect(() => {
     let alive = true
@@ -47,7 +65,7 @@ function DirectionsDialog({ place, employers, onClose }: { place: Place; employe
   }, [place.label])
 
   async function copy(kind: 'address' | 'coords') {
-    const text = kind === 'address' ? shortAddress(place.label) : decimalCoords(place.lat, place.lon)
+    const text = kind === 'address' ? copyAddress(place) : decimalCoords(place.lat, place.lon)
     if (await copyText(text)) {
       setCopied(kind)
       setTimeout(() => setCopied(''), 1800)

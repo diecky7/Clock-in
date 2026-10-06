@@ -146,3 +146,10 @@ export function fullAddress(p: { label: string; detail?: { name?: string; number
   const stateZip = [d.state, d.zip].filter(Boolean).join(' ')
   return [line, d.city, stateZip].filter(Boolean).join(', ')
 }
+
+/** The abbreviated one-liner to paste elsewhere, with ZIP when the details know it. */
+export function copyAddress(p: { label: string; detail?: { name?: string; number?: string; street?: string; city?: string; state?: string; zip?: string } }): string {
+  const d = p.detail
+  if (!d || !(d.street || d.city)) return shortAddress(p.label)
+  return formatParts({ name: d.name, number: d.number, street: d.street, city: d.city, state: d.state, postcode: d.zip })
+}
