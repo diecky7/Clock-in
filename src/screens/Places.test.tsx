@@ -42,4 +42,27 @@ describe('Places', () => {
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
+
+  it('keeps every address ever used, not just the latest few, and merges places from past entries', async () => {
+    for (let n = 1; n <= 12; n++) await repo.addRecentPlace({ lat: 42 + n / 1000, lon: -71, label: `${n} Oak St, Boston, MA` })
+    await repo.saveEmployer({ id: 'e', name: 'A', overtimeEnabled: false, archived: false, rates: [{ from: '2025-01-01', cents: 3000 }] })
+    await repo.saveEntry({
+      id: 't', employerId: 'e', start: '2025-10-06T07:00', end: '2025-10-06T15:00', breakMin: 0, rateCents: 3000,
+      place: { lat: 41, lon: -71, label: '9 Old Rd, Worcester, MA' },
+    })
+    render(<Places />)
+    expect(await screen.findByText('1 Oak St, Boston, MA')).toBeInTheDocument()
+    expect(screen.getByText('12 Oak St, Boston, MA')).toBeInTheDocument()
+    expect(screen.getByText('9 Old Rd, Worcester, MA')).toBeInTheDocument()
+  })
+
+  it('filters a long list with the search box', async () => {
+    const user = userEvent.setup()
+    for (let n = 1; n <= 8; n++) await repo.addRecentPlace({ lat: 42, lon: -71 - n / 1000, label: `${n} Pine Ave, Salem, MA` })
+    await repo.addRecentPlace({ lat: 41, lon: -70, label: '5 Beach Rd, Cape Cod, MA' })
+    render(<Places />)
+    await user.type(await screen.findByLabelText('Search addresses'), 'beach')
+    expect(screen.getByText('5 Beach Rd, Cape Cod, MA')).toBeInTheDocument()
+    expect(screen.queryByText('1 Pine Ave, Salem, MA')).not.toBeInTheDocument()
+  })
 })

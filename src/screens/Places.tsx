@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowIcon } from '../components/icons'
-import { Screen } from '../components/ui'
+import { Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
 import { directionLinks } from '../location/directions'
 import type { Place } from '../domain/types'
@@ -50,23 +50,37 @@ function DirectionsDialog({ place, onClose }: { place: Place; onClose: () => voi
 export default function Places() {
   const [places, setPlaces] = useState<Place[] | null>(null)
   const [picked, setPicked] = useState<Place | null>(null)
+  const [filter, setFilter] = useState('')
 
   useEffect(() => {
     let alive = true
     void repo
-      .getSettings()
-      .then((s) => alive && setPlaces(s.recentPlaces))
+      .listAllPlaces()
+      .then((all) => alive && setPlaces(all))
       .catch(() => alive && setPlaces([]))
     return () => {
       alive = false
     }
   }, [])
 
+  const q = filter.trim().toLowerCase()
+  const shown = (places ?? []).filter((p) => !q || p.label.toLowerCase().includes(q))
+
   return (
-    <Screen title="Recent places" back="/">
+    <Screen title="Places" back="/">
+      {places && places.length > 6 && (
+        <input
+          type="search"
+          aria-label="Search addresses"
+          placeholder="Search addresses"
+          className={inputCls}
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+      )}
       {places && places.length === 0 && <p className="mt-8 text-center text-muted">No addresses yet</p>}
-      <ul className="mt-2 divide-y divide-border overflow-hidden rounded-2xl bg-surface">
-        {(places ?? []).map((p) => (
+      <ul className="mt-3 divide-y divide-border overflow-hidden rounded-2xl bg-surface">
+        {shown.map((p) => (
           <li key={`${p.label}-${p.lat}-${p.lon}`} className="flex min-h-16 items-center gap-3 py-2 pl-4 pr-2">
             <p className="flex-1">{p.label}</p>
             <button
@@ -80,6 +94,7 @@ export default function Places() {
           </li>
         ))}
       </ul>
+      {places && places.length > 0 && shown.length === 0 && <p className="mt-6 text-center text-muted">No matches</p>}
       {picked && <DirectionsDialog place={picked} onClose={() => setPicked(null)} />}
     </Screen>
   )
