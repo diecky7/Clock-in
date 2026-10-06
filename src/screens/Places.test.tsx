@@ -93,7 +93,7 @@ describe('Places', () => {
       lat: 42.28,
       lon: -71.41,
       label: '12 Main St, Framingham, MA 01702',
-      detail: { street: 'Main Street', city: 'Framingham', county: 'Middlesex County', zip: '01702', accuracyM: 5, kind: 'residential' },
+      detail: { number: '12', street: 'Main Street', city: 'Framingham', county: 'Middlesex County', state: 'Massachusetts', zip: '01702', country: 'United States', accuracyM: 5, kind: 'residential' },
     }
     await repo.addRecentPlace(place)
     for (const [id, day] of [['a', '05'], ['b', '06']])
@@ -106,16 +106,42 @@ describe('Places', () => {
     expect(within(box).getByText('Waze')).toBeInTheDocument() // short caption under the icon
     expect(within(box).getByText('Apple')).toBeInTheDocument()
     expect(within(box).getByText('Middlesex County')).toBeInTheDocument()
-    expect(within(box).getByText('Main St')).toBeInTheDocument() // street shortened in the details too
+    expect(within(box).getByText('12 Main Street, Framingham, Massachusetts 01702, United States')).toBeInTheDocument() // full, spelled out
+    expect(within(box).getByText('Main Street')).toBeInTheDocument()
     expect(within(box).getByText('Residential street')).toBeInTheDocument()
     expect(within(box).getByText('42.280000')).toBeInTheDocument()
     expect(within(box).getByText('±16 ft')).toBeInTheDocument()
-    expect(await within(box).findByText('Times worked')).toBeInTheDocument()
-    expect(within(box).getByText('16.0 h')).toBeInTheDocument()
+    expect((await within(box).findAllByText('Times worked')).length).toBeGreaterThan(0)
+    expect(within(box).getAllByText('16.0 h').length).toBeGreaterThan(0)
     expect(within(box).getByText('Acme')).toBeInTheDocument()
+    expect(within(box).queryByText('Employers', { selector: 'dt' })).not.toBeInTheDocument() // no repeated row in the summary
     await user.click(within(box).getByRole('button', { name: 'Copy coordinates' }))
     expect(await navigator.clipboard.readText()).toBe('42.28000, -71.41000')
     await user.click(within(box).getByRole('button', { name: 'Copy address' }))
     expect(await navigator.clipboard.readText()).toBe('12 Main St, Framingham, MA 01702')
+  })
+
+  it('lists every employer that worked at the address in expandable sections', async () => {
+    const mk = (id: string, name: string) => ({ id, name, overtimeEnabled: false, archived: false, rates: [{ from: '2026-01-01', cents: 3000 }] })
+    await repo.saveEmployer(mk('a', 'Acme'))
+    await repo.saveEmployer(mk('b', 'Bay Homes'))
+    const place = { lat: 1, lon: 2, label: '5 Oak St, Salem, MA 01970' }
+    await repo.addRecentPlace(place)
+    const shift = (id: string, employerId: string, day: string, out: string) =>
+      repo.saveEntry({ id, employerId, start: `2026-10-${day}T07:00`, end: `2026-10-${day}T${out}`, breakMin: 0, rateCents: 3000, place })
+    await shift('1', 'a', '05', '15:00') // 8 h
+    await shift('2', 'b', '07', '11:00') // 4 h
+    await shift('3', 'b', '08', '11:00') // 4 h
+    const user = userEvent.setup()
+    render(<Places />)
+    await user.click(await screen.findByRole('button', { name: /^Directions to/ }))
+    const box = screen.getByRole('dialog')
+    const acme = (await within(box).findByText('Acme')).closest('details') as HTMLElement
+    const bay = within(box).getByText('Bay Homes').closest('details') as HTMLElement
+    expect(within(box).getAllByText('Times worked')[0].nextSibling).toHaveTextContent('3') // summary row, above the employers
+    await user.click(within(bay).getByText('Bay Homes'))
+    expect(bay).toHaveProperty('open', true)
+    expect(acme).toHaveProperty('open', false)
+    expect(within(bay).getByText('8.0 h')).toBeInTheDocument()
   })
 })
