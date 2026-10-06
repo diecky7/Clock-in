@@ -138,11 +138,11 @@ export function kindLabel(kind?: string): string {
   return KIND[kind] ?? kind.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
 }
 
-/** The address spelled out in full for the info box: "12 Main Street, Framingham, Massachusetts 01702, United States". */
+/** The address spelled out in full for the info box: "12 Main Street, Framingham, Massachusetts 01702". */
 export function fullAddress(p: { label: string; detail?: { name?: string; number?: string; street?: string; city?: string; state?: string; zip?: string; country?: string } }): string {
   const d = p.detail
   if (!d || !(d.street || d.city)) return p.label
   const line = d.street ? [d.number, d.street].filter(Boolean).join(' ') : d.name
   const stateZip = [d.state, d.zip].filter(Boolean).join(' ')
-  return [line, d.city, stateZip, d.country].filter(Boolean).join(', ')
+  return [line, d.city, stateZip].filter(Boolean).join(', ')
 }

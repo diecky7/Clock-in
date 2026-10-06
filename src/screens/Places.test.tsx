@@ -93,7 +93,7 @@ describe('Places', () => {
       lat: 42.28,
       lon: -71.41,
       label: '12 Main St, Framingham, MA 01702',
-      detail: { number: '12', street: 'Main Street', city: 'Framingham', county: 'Middlesex County', state: 'Massachusetts', zip: '01702', country: 'United States', accuracyM: 5, kind: 'residential' },
+      detail: { number: '12', street: 'Main Street', city: 'Framingham', county: 'Middlesex County', state: 'Massachusetts', zip: '01702', accuracyM: 5, kind: 'residential' },
     }
     await repo.addRecentPlace(place)
     for (const [id, day] of [['a', '05'], ['b', '06']])
@@ -106,7 +106,7 @@ describe('Places', () => {
     expect(within(box).getByText('Waze')).toBeInTheDocument() // short caption under the icon
     expect(within(box).getByText('Apple')).toBeInTheDocument()
     expect(within(box).getByText('Middlesex County')).toBeInTheDocument()
-    expect(within(box).getByText('12 Main Street, Framingham, Massachusetts 01702, United States')).toBeInTheDocument() // full, spelled out
+    expect(within(box).getByText('12 Main Street, Framingham, Massachusetts 01702')).toBeInTheDocument() // full, spelled out
     expect(within(box).getByText('Main Street')).toBeInTheDocument()
     expect(within(box).getByText('Residential street')).toBeInTheDocument()
     expect(within(box).getByText('42.280000')).toBeInTheDocument()

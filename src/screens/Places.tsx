@@ -101,7 +101,6 @@ function DirectionsDialog({ place, employers, onClose }: { place: Place; employe
             ['County', d.county],
             ['State', d.state],
             ['ZIP code', d.zip],
-            ['Country', d.country],
             ['Type', kindLabel(d.kind) || undefined],
           ]}
         />
