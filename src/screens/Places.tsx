@@ -60,7 +60,7 @@ function DirectionsDialog({ place, employers, onClose }: { place: Place; employe
 
   return (
     <Modal label={`Directions to ${place.label}`} initialFocus={first} onClose={onClose}>
-        <p className="px-2 pb-3 pt-1 text-center text-base font-medium">{place.label}</p>
+        <p className="px-2 pb-3 pt-1 text-center text-base font-medium">{fullAddress(place)}</p>
 
         <div className="grid grid-cols-3 gap-2">
           {directionLinks(place).map((l, i) => {
@@ -93,7 +93,6 @@ function DirectionsDialog({ place, employers, onClose }: { place: Place; employe
         <Group
           title="Address"
           rows={[
-            ['Full address', fullAddress(place)],
             ['Place', d.name],
             ['Number', d.number],
             ['Street', d.street],
