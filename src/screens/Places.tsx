@@ -3,7 +3,7 @@ import Modal from '../components/Modal'
 import { CopyIcon, FoldedMapIcon, NavArrowIcon, RoutePinIcon } from '../components/icons'
 import { Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
-import { copyAddress, copyText, decimalCoords, dmsCoords, fullAddress, kindLabel, shortAddress } from '../location/address'
+import { copyAddress, copyText, decimalCoords, dmsCoords, fullAddress, shortAddress } from '../location/address'
 import { directionLinks } from '../location/directions'
 import { reverseGeocode } from '../location/geocode'
 import { formatDate, formatHours } from '../domain/time'
@@ -108,20 +108,6 @@ function DirectionsDialog({ place: saved, employers, onClose }: { place: Place; 
           </button>
         </div>
 
-        <Group
-          title="Address"
-          rows={[
-            ['Place', d.name],
-            ['Number', d.number],
-            ['Street', d.street],
-            ['Neighborhood', d.neighborhood],
-            ['City', d.city],
-            ['County', d.county],
-            ['State', d.state],
-            ['ZIP code', d.zip],
-            ['Type', kindLabel(d.kind) || undefined],
-          ]}
-        />
         <Group
           title="Location"
           rows={[
