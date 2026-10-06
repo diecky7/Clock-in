@@ -38,3 +38,13 @@ describe('address format', () => {
     expect(await copyText('y')).toBe(false)
   })
 })
+
+describe('coordinates and place type', () => {
+  it('formats decimal and degrees', async () => {
+    const { decimalCoords, dmsCoords, kindLabel } = await import('./address')
+    expect(decimalCoords(42.3601, -71.0589)).toBe('42.36010, -71.05890')
+    expect(dmsCoords(42.3601, -71.0589)).toBe('42°21′36″ N, 71°03′32″ W')
+    expect(kindLabel('residential')).toBe('Residential street')
+    expect(kindLabel('some_thing')).toBe('Some thing')
+  })
+})

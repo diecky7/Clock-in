@@ -98,3 +98,37 @@ export async function copyText(text: string): Promise<boolean> {
     return false
   }
 }
+
+function dms(value: number, pos: string, neg: string): string {
+  const abs = Math.abs(value)
+  const d = Math.floor(abs)
+  const mFull = (abs - d) * 60
+  const m = Math.floor(mFull)
+  const s = Math.round((mFull - m) * 60)
+  // Rounding can push seconds to 60; carry it.
+  const [mm, ss] = s === 60 ? [m + 1, 0] : [m, s]
+  return `${d}°${String(mm).padStart(2, '0')}′${String(ss).padStart(2, '0')}″ ${value >= 0 ? pos : neg}`
+}
+
+/** "42.36010, -71.05890" — the form every map app accepts. */
+export function decimalCoords(lat: number, lon: number): string {
+  return `${lat.toFixed(5)}, ${lon.toFixed(5)}`
+}
+
+/** `42°21′36″ N, 71°03′32″ W`. */
+export function dmsCoords(lat: number, lon: number): string {
+  return `${dms(lat, 'N', 'S')}, ${dms(lon, 'E', 'W')}`
+}
+
+const KIND: Record<string, string> = {
+  house: 'House', residential: 'Residential street', apartments: 'Apartments', building: 'Building', commercial: 'Commercial',
+  retail: 'Store', industrial: 'Industrial', yes: 'Building', street: 'Street', road: 'Road', city: 'City', town: 'Town',
+  village: 'Village', hamlet: 'Hamlet', suburb: 'Neighborhood', neighbourhood: 'Neighborhood', hotel: 'Hotel', school: 'School',
+  hospital: 'Hospital', office: 'Office', construction: 'Construction site', warehouse: 'Warehouse', church: 'Church',
+}
+
+/** Readable place type from the geocoder's raw value ("residential" → "Residential street"). */
+export function kindLabel(kind?: string): string {
+  if (!kind) return ''
+  return KIND[kind] ?? kind.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
+}

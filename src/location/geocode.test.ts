@@ -29,8 +29,13 @@ describe('searchAddress', () => {
     expect(url.searchParams.get('limit')).toBe('5')
     expect(url.searchParams.get('lang')).toBe('en')
     expect(places).toEqual([
-      { lat: 42.3601, lon: -71.0589, label: '1 City Hall Plz, Boston, MA 02201' },
-      { lat: 42.4, lon: -71.1, label: 'Home Depot, Medford, MA' },
+      {
+        lat: 42.3601,
+        lon: -71.0589,
+        label: '1 City Hall Plz, Boston, MA 02201',
+        detail: { number: '1', street: 'City Hall Plaza', city: 'Boston', state: 'Massachusetts', zip: '02201' },
+      },
+      { lat: 42.4, lon: -71.1, label: 'Home Depot, Medford, MA', detail: { name: 'Home Depot', city: 'Medford', state: 'Massachusetts' } },
     ])
   })
 
@@ -59,7 +64,12 @@ describe('reverseGeocode', () => {
     expect(url.origin + url.pathname).toBe('https://nominatim.openstreetmap.org/reverse')
     expect(url.searchParams.get('format')).toBe('jsonv2')
     expect(url.searchParams.get('lat')).toBe('42.36')
-    expect(p).toEqual({ lat: 42.36, lon: -71.058, label: '1 City Hall Plz, Boston, MA 02201' })
+    expect(p).toEqual({
+      lat: 42.36,
+      lon: -71.058,
+      label: '1 City Hall Plz, Boston, MA 02201',
+      detail: { number: '1', street: 'City Hall Plaza', city: 'Boston', state: 'Massachusetts', zip: '02201' },
+    })
   })
 
   it('falls back to display_name when the address is not structured', async () => {

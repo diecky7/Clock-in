@@ -1,5 +1,5 @@
-import type { Place } from '../domain/types'
-import { formatParts } from './address'
+import type { Place, PlaceDetail } from '../domain/types'
+import { formatParts, zip5 } from './address'
 
 const PHOTON = 'https://photon.komoot.io/api/'
 const NOMINATIM = 'https://nominatim.openstreetmap.org/reverse'
@@ -15,6 +15,30 @@ interface Parts {
   village?: string
   state?: string
   postcode?: string
+  district?: string
+  suburb?: string
+  neighbourhood?: string
+  county?: string
+  country?: string
+  osm_value?: string
+  type?: string
+}
+
+function buildDetail(p: Parts, kind?: string): PlaceDetail {
+  const d: PlaceDetail = {
+    name: p.name,
+    number: p.housenumber ?? p.house_number,
+    street: p.street ?? p.road,
+    neighborhood: p.neighbourhood ?? p.suburb ?? p.district,
+    city: p.city ?? p.town ?? p.village,
+    county: p.county,
+    state: p.state,
+    zip: zip5(p.postcode) || undefined,
+    country: p.country,
+    kind: kind ?? p.osm_value ?? p.type,
+  }
+  // Drop empty fields so saved places stay small.
+  return Object.fromEntries(Object.entries(d).filter(([, v]) => v)) as PlaceDetail
 }
 
 /** "1 City Hall Plz, Boston, MA 02201" — street first (or the place name), city, state and ZIP. */
@@ -45,6 +69,7 @@ export async function searchAddress(q: string, signal?: AbortSignal): Promise<Pl
       lat: f.geometry.coordinates[1],
       lon: f.geometry.coordinates[0],
       label: buildLabel(f.properties) || f.properties.name || '',
+      detail: buildDetail(f.properties),
     }))
     .filter((p) => p.label)
 }
@@ -57,9 +82,15 @@ export async function reverseGeocode(lat: number, lon: number): Promise<Place> {
   url.searchParams.set('accept-language', 'en')
   const res = await fetch(url.toString())
   if (!res.ok) throw new Error(`Reverse geocoding failed (${res.status})`)
-  const data = (await res.json()) as { display_name?: string; address?: Parts }
+  const data = (await res.json()) as { display_name?: string; address?: Parts; name?: string; type?: string }
   const structured = data.address ? buildLabel(data.address) : ''
-  return { lat, lon, label: structured || data.display_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}` }
+  const detail = data.address ? buildDetail({ ...data.address, name: data.address.name ?? data.name }, data.type) : {}
+  return {
+    lat,
+    lon,
+    label: structured || data.display_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
+    ...(Object.keys(detail).length ? { detail } : {}),
+  }
 }
 
 export function getCurrentPosition(): Promise<{ lat: number; lon: number; accuracyM: number }> {

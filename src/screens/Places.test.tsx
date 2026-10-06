@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { resetDbForTests } from '../data/db'
@@ -35,7 +35,7 @@ describe('Places', () => {
     render(<Places />)
     const open = await screen.findByRole('button', { name: 'Directions to Somewhere' })
     await user.click(open)
-    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(screen.getByRole('button', { name: 'Close' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(open).toHaveFocus()
     await user.click(open)
@@ -73,5 +73,35 @@ describe('Places', () => {
     await user.click(await screen.findByRole('button', { name: /^Copy address/ }))
     expect(await navigator.clipboard.readText()).toBe('12 Main St, Framingham, MA')
     expect(await screen.findByText('Copied')).toBeInTheDocument()
+  })
+
+  it('shows everything known about an address in the box, with icon-only map apps and copy buttons', async () => {
+    await repo.saveEmployer({ id: 'e', name: 'Acme', overtimeEnabled: false, archived: false, rates: [{ from: '2026-01-01', cents: 3000 }] })
+    const place = {
+      lat: 42.28,
+      lon: -71.41,
+      label: '12 Main St, Framingham, MA 01702',
+      detail: { street: 'Main Street', city: 'Framingham', county: 'Middlesex County', zip: '01702', accuracyM: 5, kind: 'residential' },
+    }
+    await repo.addRecentPlace(place)
+    for (const [id, day] of [['a', '05'], ['b', '06']])
+      await repo.saveEntry({ id, employerId: 'e', start: `2026-10-${day}T07:00`, end: `2026-10-${day}T15:00`, breakMin: 0, rateCents: 3000, place })
+    const user = userEvent.setup()
+    render(<Places />)
+    await user.click(await screen.findByRole('button', { name: /^Directions to/ }))
+    const box = screen.getByRole('dialog')
+    expect(within(box).getByRole('link', { name: 'Waze' })).toBeInTheDocument()
+    expect(within(box).queryByText('Waze')).not.toBeInTheDocument() // icon only, no visible text
+    expect(within(box).getByText('Middlesex County')).toBeInTheDocument()
+    expect(within(box).getByText('Residential street')).toBeInTheDocument()
+    expect(within(box).getByText('42.280000')).toBeInTheDocument()
+    expect(within(box).getByText('±16 ft')).toBeInTheDocument()
+    expect(await within(box).findByText('Times worked')).toBeInTheDocument()
+    expect(within(box).getByText('16.0 h')).toBeInTheDocument()
+    expect(within(box).getByText('Acme')).toBeInTheDocument()
+    await user.click(within(box).getByRole('button', { name: 'Copy coordinates' }))
+    expect(await navigator.clipboard.readText()).toBe('42.28000, -71.41000')
+    await user.click(within(box).getByRole('button', { name: 'Copy address' }))
+    expect(await navigator.clipboard.readText()).toBe('12 Main St, Framingham, MA 01702')
   })
 })
