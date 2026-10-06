@@ -75,7 +75,7 @@ describe('Places', () => {
     expect(await screen.findByText('Copied')).toBeInTheDocument()
   })
 
-  it('shows everything known about an address in the box, with icon-only map apps and copy buttons', async () => {
+  it('shows everything known about an address in the box, with a captioned icon per map app and copy buttons', async () => {
     await repo.saveEmployer({ id: 'e', name: 'Acme', overtimeEnabled: false, archived: false, rates: [{ from: '2026-01-01', cents: 3000 }] })
     const place = {
       lat: 42.28,
@@ -91,7 +91,8 @@ describe('Places', () => {
     await user.click(await screen.findByRole('button', { name: /^Directions to/ }))
     const box = screen.getByRole('dialog')
     expect(within(box).getByRole('link', { name: 'Waze' })).toBeInTheDocument()
-    expect(within(box).queryByText('Waze')).not.toBeInTheDocument() // icon only, no visible text
+    expect(within(box).getByText('Waze')).toBeInTheDocument() // short caption under the icon
+    expect(within(box).getByText('Apple')).toBeInTheDocument()
     expect(within(box).getByText('Middlesex County')).toBeInTheDocument()
     expect(within(box).getByText('Residential street')).toBeInTheDocument()
     expect(within(box).getByText('42.280000')).toBeInTheDocument()

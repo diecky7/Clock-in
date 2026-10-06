@@ -89,10 +89,10 @@ function DirectionsDialog({ place, employers, onClose }: { place: Place; employe
                 href={l.href}
                 onClick={onClose}
                 aria-label={l.name}
-                title={l.name}
-                className="grid h-14 place-items-center rounded-2xl bg-bg"
+                className="grid h-16 place-content-center justify-items-center gap-1 rounded-2xl bg-bg"
               >
                 <Icon />
+                <span className="text-[11px] leading-none text-muted">{l.name.split(' ')[0]}</span>
               </a>
             )
           })}
