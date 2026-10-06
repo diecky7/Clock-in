@@ -29,4 +29,6 @@ export interface Settings {
   weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
   schedule: DaySchedule[]
   recentPlaces: Place[]
+  /** Ask which address to use when a new entry starts this close to a saved one. 0 = off, default 500. */
+  nearbyFeet?: number
 }

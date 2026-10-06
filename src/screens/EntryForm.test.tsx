@@ -97,6 +97,29 @@ describe('EntryForm', () => {
     expect(await screen.findByText(hall.label)).toBeInTheDocument()
   })
 
+  it('asks which address to use when GPS is near a saved one, and uses the saved one on request', async () => {
+    const user = userEvent.setup()
+    const saved: Place = { lat: 42.3601, lon: -71.05, label: 'City Hall Plaza, Boston, Massachusetts' } // ~35 ft away
+    await repo.addRecentPlace(saved)
+    vi.mocked(geo.getCurrentPosition).mockResolvedValue({ lat: 42.36, lon: -71.05, accuracyM: 5 })
+    vi.mocked(geo.reverseGeocode).mockResolvedValue(hall)
+    await setup()
+    expect(await screen.findByRole('alert')).toHaveTextContent(saved.label)
+    await user.click(screen.getByRole('button', { name: 'Use saved address' }))
+    expect(screen.getByTestId('chosen-place')).toHaveTextContent(saved.label)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('does not ask when the saved address is farther than the limit or the check is off', async () => {
+    const far: Place = { lat: 42.37, lon: -71.05, label: 'Far Away St, Boston, Massachusetts' }
+    await repo.addRecentPlace(far)
+    vi.mocked(geo.getCurrentPosition).mockResolvedValue({ lat: 42.36, lon: -71.05, accuracyM: 5 })
+    vi.mocked(geo.reverseGeocode).mockResolvedValue(hall)
+    await setup()
+    expect(await screen.findByText(hall.label)).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('focusing the empty address field lists recent places; choosing one fills the place; saving records it', async () => {
     const user = userEvent.setup()
     await repo.addRecentPlace(hall)

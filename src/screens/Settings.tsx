@@ -9,9 +9,19 @@ import { formatUSD } from '../domain/money'
 import { rateOn } from '../domain/rates'
 import { today } from '../domain/today'
 import type { Employer, Settings as SettingsData } from '../domain/types'
+import { DEFAULT_NEARBY_FT } from '../location/distance'
 import { navigate } from '../router'
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+const NEARBY_OPTIONS = [
+  { ft: 0, label: 'Off' },
+  { ft: 250, label: '250 ft' },
+  { ft: 500, label: '500 ft' },
+  { ft: 1000, label: '1,000 ft' },
+  { ft: 2640, label: '0.5 mi' },
+  { ft: 5280, label: '1 mi' },
+]
 
 const rowCls = 'flex min-h-14 w-full items-center justify-between gap-3 px-4 text-left text-base'
 const divider = 'border-t border-border first:border-t-0'
@@ -82,6 +92,13 @@ export default function Settings() {
     await repo.saveSettings(next)
   }
 
+  async function setNearby(v: number) {
+    if (!settings) return
+    const next = { ...settings, nearbyFeet: v }
+    setSettings(next)
+    await repo.saveSettings(next)
+  }
+
   const now = today()
   return (
     <Screen title="Settings" back="/">
@@ -121,6 +138,21 @@ export default function Settings() {
               {DAYS.map((d, i) => (
                 <option key={d} value={i}>
                   {d}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className={`${rowCls} ${divider}`}>
+            <label htmlFor="nearby">Ask about saved address within</label>
+            <select
+              id="nearby"
+              className={`${inputCls} !w-auto`}
+              value={settings.nearbyFeet ?? DEFAULT_NEARBY_FT}
+              onChange={(ev) => void setNearby(Number(ev.target.value))}
+            >
+              {NEARBY_OPTIONS.map((o) => (
+                <option key={o.ft} value={o.ft}>
+                  {o.label}
                 </option>
               ))}
             </select>
