@@ -105,10 +105,8 @@ describe('Places', () => {
     expect(within(box).getByRole('link', { name: 'Waze' })).toBeInTheDocument()
     expect(within(box).getByText('Waze')).toBeInTheDocument() // short caption under the icon
     expect(within(box).getByText('Apple')).toBeInTheDocument()
-    expect(within(box).getByText('Middlesex County')).toBeInTheDocument()
     expect(within(box).getByText('12 Main Street, Framingham, Massachusetts 01702')).toBeInTheDocument() // full, spelled out
-    expect(within(box).getByText('Main Street')).toBeInTheDocument()
-    expect(within(box).getByText('Residential street')).toBeInTheDocument()
+    expect(within(box).queryByText('Address', { selector: 'h2' })).not.toBeInTheDocument() // no separate Address box
     expect(within(box).getByText('42.280000')).toBeInTheDocument()
     expect(within(box).getByText('±16 ft')).toBeInTheDocument()
     expect((await within(box).findAllByText('Times worked')).length).toBeGreaterThan(0)
