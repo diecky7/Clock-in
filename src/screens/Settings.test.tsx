@@ -121,6 +121,17 @@ describe('Settings', () => {
   })
 })
 
+describe('Settings nearby distance', () => {
+  it('saves the distance for the saved-address prompt', async () => {
+    const user = userEvent.setup()
+    render(<Settings />)
+    const select = await screen.findByLabelText('Ask about saved address within')
+    expect(select).toHaveValue('500')
+    await user.selectOptions(select, '0.5 mi')
+    await waitFor(async () => expect((await repo.getSettings()).nearbyFeet).toBe(2640))
+  })
+})
+
 describe('ScheduleEdit', () => {
   it('shows one set of times and saves a day toggled off as null', async () => {
     const user = userEvent.setup()

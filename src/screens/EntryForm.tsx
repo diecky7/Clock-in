@@ -10,6 +10,7 @@ import { today } from '../domain/today'
 import type { Employer, Place, Settings, TimeEntry } from '../domain/types'
 import { addDays } from '../domain/weeks'
 import { getCurrentPosition, reverseGeocode, searchAddress } from '../location/geocode'
+import { DEFAULT_NEARBY_FT, formatDistance, nearestWithin } from '../location/distance'
 import { navigate } from '../router'
 
 // The map library is large; load it only when this form opens.
@@ -56,6 +57,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
   const [suggestions, setSuggestions] = useState<Place[]>([])
   const [locNote, setLocNote] = useState('')
   const [gpsBusy, setGpsBusy] = useState(false)
+  const [nearby, setNearby] = useState<{ existing: Place; found: Place; ft: number } | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -97,6 +99,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
   const userChose = useRef(false)
   function setPlaceByUser(p: Place | null) {
     userChose.current = true
+    setNearby(null)
     setPlace(p)
   }
 
@@ -113,6 +116,8 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
       }
       if (auto && userChose.current) return
       setPlace(p)
+      const near = nearestWithin(pos, settings?.recentPlaces ?? [], settings?.nearbyFeet ?? DEFAULT_NEARBY_FT)
+      setNearby(near && near.place.label !== p.label ? { existing: near.place, found: p, ft: near.ft } : null)
     } catch {
       if (!(auto && userChose.current)) setLocNote("Couldn't get your location. Search for an address instead.")
     } finally {
@@ -306,6 +311,29 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
         >
           {gpsBusy ? 'Finding you…' : 'Use my location'}
         </button>
+        {nearby && (
+          <div role="alert" className="mt-3 rounded-2xl bg-surface p-4">
+            <p className="text-sm">
+              You're about {formatDistance(nearby.ft)} from <span className="font-medium">{nearby.existing.label}</span>. Which address should this entry use?
+            </p>
+            <div className="mt-3 grid gap-2">
+              <button
+                type="button"
+                className="min-h-12 rounded-full bg-accent px-4 font-semibold text-accent-fg"
+                onClick={() => setPlaceByUser(nearby.existing)}
+              >
+                Use saved address
+              </button>
+              <button
+                type="button"
+                className="min-h-12 rounded-full border border-border bg-bg px-4 font-medium"
+                onClick={() => setPlaceByUser(nearby.found)}
+              >
+                Use new address
+              </button>
+            </div>
+          </div>
+        )}
         {locNote && (
           <p role="status" className="mt-2 text-sm text-muted">
             {locNote}
