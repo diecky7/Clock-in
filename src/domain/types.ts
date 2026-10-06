@@ -1,4 +1,19 @@
-export interface Place { lat: number; lon: number; label: string }
+/** Everything the address lookup told us about a place; all optional because sources differ. */
+export interface PlaceDetail {
+  name?: string
+  number?: string
+  street?: string
+  neighborhood?: string
+  city?: string
+  county?: string
+  state?: string
+  zip?: string
+  country?: string
+  kind?: string
+  /** GPS accuracy in meters, when the address came from "Use my location". */
+  accuracyM?: number
+}
+export interface Place { lat: number; lon: number; label: string; detail?: PlaceDetail }
 export interface RateChange { from: string; cents: number }
 export interface Employer {
   id: string

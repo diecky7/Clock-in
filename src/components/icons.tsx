@@ -65,3 +65,25 @@ export const CopyIcon = () => (
     <path d="M5 15V6a2 2 0 0 1 2-2h9" />
   </svg>
 )
+
+/* Own symbols for the three navigation apps (not the apps' logos). */
+export const FoldedMapIcon = () => (
+  <svg {...base}>
+    <path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2z" />
+    <path d="M9 4v14" />
+    <path d="M15 6v14" />
+  </svg>
+)
+
+export const RoutePinIcon = () => (
+  <svg {...base}>
+    <path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10z" />
+    <circle cx="12" cy="11" r="2" />
+  </svg>
+)
+
+export const NavArrowIcon = () => (
+  <svg {...base}>
+    <path d="m4 11 16-7-7 16-2-7z" />
+  </svg>
+)

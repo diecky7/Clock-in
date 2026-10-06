@@ -1,3 +1,4 @@
+import { shiftMinutes } from '../domain/time'
 import type { Employer, Expense, Place, Settings, TimeEntry } from '../domain/types'
 import {
   getDb,
@@ -118,4 +119,25 @@ export async function listAllPlaces(): Promise<Place[]> {
   settings.recentPlaces.forEach(add)
   entries.sort((a, b) => b.start.localeCompare(a.start)).forEach((e) => add(e.place))
   return all
+}
+
+export interface PlaceHistory {
+  times: number
+  first: string | null
+  last: string | null
+  minutes: number
+  employerIds: string[]
+}
+
+/** How often, when and for whom you worked at an address (matched by its label). */
+export async function placeHistory(label: string): Promise<PlaceHistory> {
+  const entries = (await (await getDb()).getAll(STORE_ENTRIES)).filter((e) => e.place?.label === label)
+  const dates = entries.map((e) => e.start.slice(0, 10)).sort()
+  return {
+    times: entries.length,
+    first: dates[0] ?? null,
+    last: dates[dates.length - 1] ?? null,
+    minutes: entries.reduce((sum, e) => sum + shiftMinutes(e), 0),
+    employerIds: [...new Set(entries.map((e) => e.employerId))],
+  }
 }

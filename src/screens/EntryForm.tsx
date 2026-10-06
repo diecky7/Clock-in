@@ -118,6 +118,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
       } catch {
         p = { lat: pos.lat, lon: pos.lon, label: `${pos.lat.toFixed(5)}, ${pos.lon.toFixed(5)}` }
       }
+      p = { ...p, detail: { ...p.detail, accuracyM: Math.round(pos.accuracyM) } }
       if (auto && userChose.current) return
       setPlace(p)
       const near = nearestWithin(pos, allPlaces, settings?.nearbyFeet ?? DEFAULT_NEARBY_FT)
