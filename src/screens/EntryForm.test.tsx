@@ -16,7 +16,7 @@ vi.mock('../location/geocode', () => ({
 
 const acme: Employer = { id: 'e1', name: 'Acme', overtimeEnabled: false, archived: false, rates: [{ from: '2026-01-01', cents: 3200 }] }
 const bolt: Employer = { id: 'e2', name: 'Bolt', overtimeEnabled: false, archived: false, rates: [{ from: '2026-01-01', cents: 4000 }] }
-const hall: Place = { lat: 42.36, lon: -71.05, label: '1 City Hall Plaza, Boston, Massachusetts' }
+const hall: Place = { lat: 42.36, lon: -71.05, label: '1 City Hall Plz, Boston, MA' }
 
 beforeEach(async () => {
   await resetDbForTests()
@@ -99,7 +99,7 @@ describe('EntryForm', () => {
 
   it('asks which address to use when GPS is near a saved one, and uses the saved one on request', async () => {
     const user = userEvent.setup()
-    const saved: Place = { lat: 42.3601, lon: -71.05, label: 'City Hall Plaza, Boston, Massachusetts' } // ~35 ft away
+    const saved: Place = { lat: 42.3601, lon: -71.05, label: 'City Hall Plz, Boston, MA' } // ~35 ft away
     await repo.addRecentPlace(saved)
     vi.mocked(geo.getCurrentPosition).mockResolvedValue({ lat: 42.36, lon: -71.05, accuracyM: 5 })
     vi.mocked(geo.reverseGeocode).mockResolvedValue(hall)
@@ -111,13 +111,28 @@ describe('EntryForm', () => {
   })
 
   it('does not ask when the saved address is farther than the limit or the check is off', async () => {
-    const far: Place = { lat: 42.37, lon: -71.05, label: 'Far Away St, Boston, Massachusetts' }
+    const far: Place = { lat: 42.37, lon: -71.05, label: 'Far Away St, Boston, MA' }
     await repo.addRecentPlace(far)
     vi.mocked(geo.getCurrentPosition).mockResolvedValue({ lat: 42.36, lon: -71.05, accuracyM: 5 })
     vi.mocked(geo.reverseGeocode).mockResolvedValue(hall)
     await setup()
     expect(await screen.findByText(hall.label)).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('shows an old long label in short form, in the chosen place and the nearby prompt', async () => {
+    const user = userEvent.setup()
+    const old: Place = { lat: 42.3601, lon: -71.05, label: '1 City Hall Plaza, Boston, Massachusetts' }
+    await repo.saveEmployer(acme)
+    await repo.saveEntry({ id: 'old', employerId: 'e1', start: '2026-09-01T07:00', end: '2026-09-01T15:00', breakMin: 0, rateCents: 3200, place: old })
+    vi.mocked(geo.getCurrentPosition).mockResolvedValue({ lat: 42.36, lon: -71.05, accuracyM: 5 })
+    vi.mocked(geo.reverseGeocode).mockResolvedValue({ lat: 42.36, lon: -71.05, label: 'Elsewhere Rd, Boston, MA' })
+    await setup()
+    expect(await screen.findByRole('alert')).toHaveTextContent('1 City Hall Plz, Boston, MA')
+    expect(screen.getByRole('alert')).not.toHaveTextContent('Massachusetts')
+    await user.click(screen.getByRole('button', { name: 'Use saved address' }))
+    expect(screen.getByTestId('chosen-place')).toHaveTextContent('1 City Hall Plz, Boston, MA')
+    expect(screen.getByTestId('chosen-place')).not.toHaveTextContent('Massachusetts')
   })
 
   it('focusing the empty address field lists recent places; choosing one fills the place; saving records it', async () => {
@@ -136,7 +151,7 @@ describe('EntryForm', () => {
 
   it('a slow automatic GPS fix does not overwrite an address the user already chose', async () => {
     const user = userEvent.setup()
-    const other: Place = { lat: 42.28, lon: -71.41, label: '12 Main St, Framingham, Massachusetts' }
+    const other: Place = { lat: 42.28, lon: -71.41, label: '12 Main St, Framingham, MA' }
     let resolveGps!: (v: { lat: number; lon: number; accuracyM: number }) => void
     vi.mocked(geo.getCurrentPosition).mockReturnValue(new Promise((r) => (resolveGps = r)))
     vi.mocked(geo.reverseGeocode).mockResolvedValue(hall)

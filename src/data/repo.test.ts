@@ -102,4 +102,11 @@ describe('repo', () => {
     await repo.saveEmployer(e)
     expect(await repo.listEmployers()).toEqual([e])
   })
+
+  it('stores one short entry for two spellings of an address', async () => {
+    await repo.addRecentPlace({ lat: 1, lon: 2, label: '12 Main Street, Framingham, Massachusetts' })
+    await repo.addRecentPlace({ lat: 1, lon: 2, label: '12 Main St, Framingham, MA' })
+    expect((await repo.getSettings()).recentPlaces.map((p) => p.label)).toEqual(['12 Main St, Framingham, MA'])
+    expect(await repo.listAllPlaces()).toHaveLength(1)
+  })
 })

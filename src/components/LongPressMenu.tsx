@@ -1,3 +1,4 @@
+import Modal from './Modal'
 import { useRef, type PointerEvent } from 'react'
 
 /** Pointer handlers that fire `onLongPress` after the finger rests for `ms`. */
@@ -48,14 +49,7 @@ export function LongPressMenu({
   const noun = target.kind === 'entry' ? 'entry' : 'expense'
   const btn = 'min-h-12 w-full rounded-xl text-base font-medium'
   return (
-    <div className="fixed inset-0 z-20 flex items-end bg-black/40" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`${noun} actions`}
-        className="mx-auto w-full max-w-md space-y-2 rounded-t-3xl border-t border-border bg-bg p-4 pb-8"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal label={`${noun} actions`} placement="bottom" onClose={onClose}>
         {confirming ? (
           <>
             <p className="px-2 py-3 text-center text-base">Delete this {noun}?</p>
@@ -76,7 +70,6 @@ export function LongPressMenu({
         <button type="button" className={`${btn} text-muted`} onClick={onClose}>
           Cancel
         </button>
-      </div>
-    </div>
+    </Modal>
   )
 }

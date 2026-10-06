@@ -1,3 +1,4 @@
+import Modal from './Modal'
 import { navigate } from '../router'
 
 export default function NewChoiceSheet({ onClose }: { onClose: () => void }) {
@@ -7,24 +8,16 @@ export default function NewChoiceSheet({ onClose }: { onClose: () => void }) {
     navigate(path)
   }
   return (
-    <div className="fixed inset-0 z-20 flex items-end bg-black/40" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Add new"
-        className="mx-auto w-full max-w-md space-y-2 rounded-t-3xl border-t border-border bg-bg p-4 pb-8"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button type="button" className={btn} onClick={() => go('/entry/new')}>
-          Time entry
-        </button>
-        <button type="button" className={btn} onClick={() => go('/expense/new')}>
-          Expense
-        </button>
-        <button type="button" className="min-h-12 w-full text-base text-muted" onClick={onClose}>
-          Cancel
-        </button>
-      </div>
-    </div>
+    <Modal label="Add new" placement="bottom" onClose={onClose}>
+      <button type="button" className={btn} onClick={() => go('/entry/new')}>
+        Time entry
+      </button>
+      <button type="button" className={btn} onClick={() => go('/expense/new')}>
+        Expense
+      </button>
+      <button type="button" className="min-h-12 w-full text-base text-muted" onClick={onClose}>
+        Cancel
+      </button>
+    </Modal>
   )
 }

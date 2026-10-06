@@ -1,4 +1,5 @@
 import type { Employer, TimeEntry } from '../domain/types'
+import { shortAddress } from '../location/address'
 import type { EmployerWeek } from '../domain/pay'
 import { formatHours, shiftMinutes } from '../domain/time'
 import { formatUSD } from '../domain/money'
@@ -72,7 +73,7 @@ export function buildReportModel(
   const days: ReportDay[] = sorted.map(e => {
     const parts: string[] = []
     if (o.timesAndBreak && e.breakMin > 0) parts.push(`${e.breakMin} min break`)
-    if (o.addresses && e.place?.label) parts.push(e.place.label)
+    if (o.addresses && e.place?.label) parts.push(shortAddress(e.place.label))
     const day: ReportDay = { label: dateLabel(e.start.split('T')[0]), hours: `${formatHours(shiftMinutes(e))} h` }
     if (o.timesAndBreak) day.times = `${timeLabel(e.start)} – ${timeLabel(e.end)}`
     if (parts.length) day.detail = parts.join(' · ')

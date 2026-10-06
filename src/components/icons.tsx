@@ -52,13 +52,6 @@ export const PinIcon = () => (
   </svg>
 )
 
-export const ArrowIcon = () => (
-  <svg {...base}>
-    <path d="M5 12h14" />
-    <path d="m13 6 6 6-6 6" />
-  </svg>
-)
-
 export const CopyIcon = () => (
   <svg {...base}>
     <rect x="9" y="9" width="11" height="11" rx="2" />

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowIcon, CopyIcon, FoldedMapIcon, NavArrowIcon, RoutePinIcon } from '../components/icons'
+import Modal from '../components/Modal'
+import { CopyIcon, FoldedMapIcon, NavArrowIcon, RoutePinIcon } from '../components/icons'
 import { Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
-import { copyText, decimalCoords, dmsCoords, kindLabel, shortAddress } from '../location/address'
+import { abbreviateStreet, copyText, decimalCoords, dmsCoords, kindLabel, shortAddress, stateCode } from '../location/address'
 import { directionLinks } from '../location/directions'
 import { formatDate, formatHours } from '../domain/time'
 import type { Employer, Place } from '../domain/types'
@@ -35,17 +36,6 @@ function DirectionsDialog({ place, employers, onClose }: { place: Place; employe
   const [copied, setCopied] = useState<'' | 'address' | 'coords'>('')
 
   useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null
-    first.current?.focus()
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      opener?.focus()
-    }
-  }, [onClose])
-
-  useEffect(() => {
     let alive = true
     void repo
       .placeHistory(place.label)
@@ -69,14 +59,7 @@ function DirectionsDialog({ place, employers, onClose }: { place: Place; employe
   const btn = 'min-h-12 rounded-full border border-border bg-bg px-4 text-sm font-medium'
 
   return (
-    <div className="fixed inset-0 z-20 grid place-items-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Directions to ${place.label}`}
-        className="max-h-[88dvh] w-full max-w-sm overflow-y-auto rounded-3xl border border-border bg-surface p-4"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal label={`Directions to ${place.label}`} initialFocus={first} onClose={onClose}>
         <p className="px-2 pb-3 pt-1 text-center text-base font-medium">{place.label}</p>
 
         <div className="grid grid-cols-3 gap-2">
@@ -112,11 +95,11 @@ function DirectionsDialog({ place, employers, onClose }: { place: Place; employe
           rows={[
             ['Place', d.name],
             ['Number', d.number],
-            ['Street', d.street],
+            ['Street', d.street ? abbreviateStreet(d.street) : undefined],
             ['Neighborhood', d.neighborhood],
             ['City', d.city],
             ['County', d.county],
-            ['State', d.state],
+            ['State', d.state ? stateCode(d.state) : undefined],
             ['ZIP code', d.zip],
             ['Country', d.country],
             ['Type', kindLabel(d.kind) || undefined],
@@ -147,8 +130,7 @@ function DirectionsDialog({ place, employers, onClose }: { place: Place; employe
         <button type="button" className="mt-3 min-h-12 w-full text-base text-muted" onClick={onClose}>
           Close
         </button>
-      </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -181,7 +163,7 @@ export default function Places() {
   }, [])
 
   const q = filter.trim().toLowerCase()
-  const shown = (places ?? []).filter((p) => !q || p.label.toLowerCase().includes(q))
+  const shown = (places ?? []).filter((p) => !q || shortAddress(p.label).toLowerCase().includes(q))
 
   return (
     <Screen title="Places" back="/">
@@ -199,7 +181,14 @@ export default function Places() {
       <ul className="mt-3 divide-y divide-border overflow-hidden rounded-2xl bg-surface">
         {shown.map((p) => (
           <li key={`${p.label}-${p.lat}-${p.lon}`} className="flex min-h-16 items-center gap-1 py-2 pl-4 pr-2">
-            <p className="mr-2 flex-1">{p.label}</p>
+            <button
+              type="button"
+              aria-label={`Directions to ${p.label}`}
+              className="min-h-11 flex-1 text-left"
+              onClick={() => setPicked(p)}
+            >
+              {p.label}
+            </button>
             <button
               type="button"
               aria-label={`Copy address: ${p.label}`}
@@ -207,14 +196,6 @@ export default function Places() {
               className="grid size-11 shrink-0 place-items-center rounded-full"
             >
               {copied === p.label ? <span className="text-xs font-medium">Copied</span> : <CopyIcon />}
-            </button>
-            <button
-              type="button"
-              aria-label={`Directions to ${p.label}`}
-              onClick={() => setPicked(p)}
-              className="grid size-11 shrink-0 place-items-center rounded-full"
-            >
-              <ArrowIcon />
             </button>
           </li>
         ))}

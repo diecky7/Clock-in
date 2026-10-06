@@ -30,6 +30,14 @@ function week() {
 const build = (o = {}) => buildReportModel(week(), emp, weekStart, { ...defaultOptions, ...o })
 
 describe('buildReportModel', () => {
+  it('prints a long saved address in short form', () => {
+    const long = [{ ...entries[0], place: { lat: 1, lon: 1, label: '12 Main Street, Framingham, Massachusetts' } }, ...entries.slice(1)]
+    const w = computeWeek({ weekStart, entries: long, expenses, employers: [emp] }).byEmployer[0]
+    const m = buildReportModel(w, emp, weekStart, { ...defaultOptions })
+    expect(m.days[0].detail).toContain('12 Main St, Framingham, MA')
+    expect(m.days[0].detail).not.toContain('Massachusetts')
+  })
+
   it('all on: value lines and total', () => {
     const w = week()
     const m = build()

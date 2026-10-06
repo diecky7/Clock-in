@@ -113,6 +113,11 @@ describe('backup', () => {
     await expectRejectedUnchanged(blob({ ...validDoc(), entries: [{ ...entry('t9'), breakMin: '30' }] }))
   })
 
+  it('rejects an entry whose place is malformed', async () => {
+    const bad = { ...entry('t9'), place: { label: 5, lat: 1, lon: 2 } }
+    await expectRejectedUnchanged(blob({ ...validDoc(), entries: [bad] }))
+  })
+
   it('rejects an entry with a date-only start', async () => {
     await expectRejectedUnchanged(blob({ ...validDoc(), entries: [{ ...entry('t9'), start: '2026-10-05' }] }))
   })

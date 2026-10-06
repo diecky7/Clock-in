@@ -68,10 +68,15 @@ export function shortAddress(label: string): string {
   return parts
     .map((seg, i) => {
       if (i === 0 && /^\d/.test(seg)) return abbreviateStreet(seg)
-      return STATES[seg.toLowerCase()] ?? seg
+      const m = /^(.*?)\s*\b(\d{5})(?:-\d{4})?$/.exec(seg)
+      const text = (m ? m[1] : seg).trim()
+      return [STATES[text.toLowerCase()] ?? text, m?.[2]].filter(Boolean).join(' ')
     })
     .join(', ')
 }
+
+/** Identity of an address, so two spellings of it ("Massachusetts" / "MA") count as one. */
+export const placeKey = (label: string): string => shortAddress(label).toLowerCase()
 
 /** Copies text to the clipboard; falls back to a hidden textarea where the async API is missing. */
 export async function copyText(text: string): Promise<boolean> {

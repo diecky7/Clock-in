@@ -1,3 +1,4 @@
+import Modal from '../components/Modal'
 import PersistenceNote from '../components/PersistenceNote'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BackupError, exportBackup, importBackup } from '../data/backup'
@@ -85,16 +86,9 @@ export default function Settings() {
     }
   }
 
-  async function setWeekStart(v: number) {
+  async function patch(partial: Partial<SettingsData>) {
     if (!settings) return
-    const next = { ...settings, weekStartsOn: v as SettingsData['weekStartsOn'] }
-    setSettings(next)
-    await repo.saveSettings(next)
-  }
-
-  async function setNearby(v: number) {
-    if (!settings) return
-    const next = { ...settings, nearbyFeet: v }
+    const next = { ...settings, ...partial }
     setSettings(next)
     await repo.saveSettings(next)
   }
@@ -133,7 +127,7 @@ export default function Settings() {
               id="week-start"
               className={`${inputCls} !w-auto`}
               value={settings.weekStartsOn}
-              onChange={(ev) => void setWeekStart(Number(ev.target.value))}
+              onChange={(ev) => void patch({ weekStartsOn: Number(ev.target.value) as SettingsData['weekStartsOn'] })}
             >
               {DAYS.map((d, i) => (
                 <option key={d} value={i}>
@@ -148,7 +142,7 @@ export default function Settings() {
               id="nearby"
               className={`${inputCls} !w-auto`}
               value={settings.nearbyFeet ?? DEFAULT_NEARBY_FT}
-              onChange={(ev) => void setNearby(Number(ev.target.value))}
+              onChange={(ev) => void patch({ nearbyFeet: Number(ev.target.value) })}
             >
               {NEARBY_OPTIONS.map((o) => (
                 <option key={o.ft} value={o.ft}>
@@ -192,14 +186,7 @@ export default function Settings() {
         </p>
       )}
       {pendingImport && (
-        <div className="fixed inset-0 z-20 flex items-end bg-black/40" onClick={() => setPendingImport(null)}>
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Replace data"
-            className="mx-auto w-full max-w-md space-y-2 rounded-t-3xl bg-bg p-4 pb-8"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <Modal label="Replace data" placement="bottom" onClose={() => setPendingImport(null)}>
             <p className="px-2 py-3 text-center text-base">Replace all data on this device?</p>
             <button type="button" className="min-h-12 w-full rounded-xl bg-danger font-medium text-white" onClick={() => void doImport()}>
               Replace
@@ -207,8 +194,7 @@ export default function Settings() {
             <button type="button" className="min-h-12 w-full rounded-xl text-muted" onClick={() => setPendingImport(null)}>
               Cancel
             </button>
-          </div>
-        </div>
+        </Modal>
       )}
     </Screen>
   )
