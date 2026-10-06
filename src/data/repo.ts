@@ -9,8 +9,6 @@ import {
   STORE_SETTINGS,
 } from './db'
 
-const MAX_RECENT_PLACES = 8
-
 export function defaultSettings(): Settings {
   const day = () => ({ in: '07:00', out: '15:30', breakMin: 30 })
   return {
@@ -100,5 +98,24 @@ export async function saveSettings(s: Settings): Promise<void> {
 export async function addRecentPlace(p: Place): Promise<void> {
   const s = await getSettings()
   const rest = s.recentPlaces.filter((x) => x.label !== p.label)
-  await saveSettings({ ...s, recentPlaces: [p, ...rest].slice(0, MAX_RECENT_PLACES) })
+  await saveSettings({ ...s, recentPlaces: [p, ...rest] })
+}
+
+/**
+ * Every address ever worked, most recently used first, without duplicates.
+ * Merges the saved address book with the places stored on past entries.
+ */
+export async function listAllPlaces(): Promise<Place[]> {
+  const [settings, entries] = await Promise.all([getSettings(), (await getDb()).getAll(STORE_ENTRIES)])
+  const seen = new Set<string>()
+  const all: Place[] = []
+  const add = (p: Place | undefined) => {
+    if (p && !seen.has(p.label)) {
+      seen.add(p.label)
+      all.push(p)
+    }
+  }
+  settings.recentPlaces.forEach(add)
+  entries.sort((a, b) => b.start.localeCompare(a.start)).forEach((e) => add(e.place))
+  return all
 }

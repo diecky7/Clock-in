@@ -81,15 +81,15 @@ describe('repo', () => {
     expect((await repo.getSettings()).weekStartsOn).toBe(1)
   })
 
-  it('addRecentPlace keeps max 8 and moves repeats to the front', async () => {
+  it('addRecentPlace keeps every address and moves repeats to the front', async () => {
     for (let i = 0; i < 10; i++) await repo.addRecentPlace({ lat: i, lon: i, label: `p${i}` })
     let s = await repo.getSettings()
-    expect(s.recentPlaces).toHaveLength(8)
+    expect(s.recentPlaces).toHaveLength(10)
     expect(s.recentPlaces[0].label).toBe('p9')
-    expect(s.recentPlaces[7].label).toBe('p2')
+    expect(s.recentPlaces[9].label).toBe('p0')
     await repo.addRecentPlace({ lat: 99, lon: 99, label: 'p5' })
     s = await repo.getSettings()
-    expect(s.recentPlaces).toHaveLength(8)
+    expect(s.recentPlaces).toHaveLength(10)
     expect(s.recentPlaces[0]).toEqual({ lat: 99, lon: 99, label: 'p5' })
     expect(s.recentPlaces.filter((p) => p.label === 'p5')).toHaveLength(1)
   })

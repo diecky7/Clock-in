@@ -163,7 +163,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
           <GearIcon />
         </button>
         <div className="flex">
-          <button type="button" aria-label="Recent places" className={iconBtn} onClick={() => navigate('/places')}>
+          <button type="button" aria-label="Places" className={iconBtn} onClick={() => navigate('/places')}>
             <PinIcon />
           </button>
           <button type="button" aria-label="Export" className={iconBtn} onClick={() => navigate(`/export?week=${weekStart}`)}>

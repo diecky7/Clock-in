@@ -39,6 +39,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
   const [missing, setMissing] = useState(false)
   const [employers, setEmployers] = useState<Employer[]>([])
   const [settings, setSettings] = useState<Settings | null>(null)
+  const [allPlaces, setAllPlaces] = useState<Place[]>([])
   const [existing, setExisting] = useState<TimeEntry | null>(null)
 
   const [employerId, setEmployerId] = useState('')
@@ -62,7 +63,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
   useEffect(() => {
     let alive = true
     void (async () => {
-      const [all, s] = await Promise.all([repo.listEmployers(), repo.getSettings()])
+      const [all, s, places] = await Promise.all([repo.listEmployers(), repo.getSettings(), repo.listAllPlaces()])
       const entry = editing ? ((await repo.getEntry(id)) ?? null) : null
       if (!alive) return
       if (editing && !entry) {
@@ -73,6 +74,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
       const choices = all.filter((e) => !e.archived || e.id === entry?.employerId)
       setEmployers(choices)
       setSettings(s)
+      setAllPlaces(places)
       setExisting(entry)
       if (entry) {
         setEmployerId(entry.employerId)
@@ -116,7 +118,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
       }
       if (auto && userChose.current) return
       setPlace(p)
-      const near = nearestWithin(pos, settings?.recentPlaces ?? [], settings?.nearbyFeet ?? DEFAULT_NEARBY_FT)
+      const near = nearestWithin(pos, allPlaces, settings?.nearbyFeet ?? DEFAULT_NEARBY_FT)
       setNearby(near && near.place.label !== p.label ? { existing: near.place, found: p, ft: near.ft } : null)
     } catch {
       if (!(auto && userChose.current)) setLocNote("Couldn't get your location. Search for an address instead.")
@@ -239,8 +241,10 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
     )
   }
 
-  const recents = settings?.recentPlaces ?? []
-  const list = query.trim() ? suggestions : recents
+  const recents = allPlaces.slice(0, 8)
+  const q = query.trim().toLowerCase()
+  const saved = q ? allPlaces.filter((p) => p.label.toLowerCase().includes(q)).slice(0, 4) : []
+  const list = q ? [...saved, ...suggestions.filter((s) => !saved.some((p) => p.label === s.label))] : recents
 
   return (
     <Screen title={title} back="/">
