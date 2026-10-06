@@ -10,6 +10,7 @@ import { today } from '../domain/today'
 import type { Employer, Place, Settings, TimeEntry } from '../domain/types'
 import { addDays } from '../domain/weeks'
 import { getCurrentPosition, reverseGeocode, searchAddress } from '../location/geocode'
+import { copyText, shortAddress } from '../location/address'
 import { DEFAULT_NEARBY_FT, formatDistance, nearestWithin } from '../location/distance'
 import { navigate } from '../router'
 
@@ -58,6 +59,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
   const [suggestions, setSuggestions] = useState<Place[]>([])
   const [locNote, setLocNote] = useState('')
   const [gpsBusy, setGpsBusy] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [nearby, setNearby] = useState<{ existing: Place; found: Place; ft: number } | null>(null)
 
   useEffect(() => {
@@ -353,9 +355,23 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
             <p data-testid="chosen-place" className="text-sm">
               {place.label}
             </p>
-            <button type="button" onClick={() => setPlaceByUser(null)} className="min-h-11 shrink-0 px-2 text-sm text-muted">
-              Remove
-            </button>
+            <div className="flex shrink-0">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (await copyText(shortAddress(place.label))) {
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 1800)
+                  }
+                }}
+                className="min-h-11 px-2 text-sm text-muted"
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+              <button type="button" onClick={() => setPlaceByUser(null)} className="min-h-11 px-2 text-sm text-muted">
+                Remove
+              </button>
+            </div>
           </div>
         )}
       </div>

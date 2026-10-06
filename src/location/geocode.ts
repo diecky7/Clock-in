@@ -1,4 +1,5 @@
 import type { Place } from '../domain/types'
+import { formatParts } from './address'
 
 const PHOTON = 'https://photon.komoot.io/api/'
 const NOMINATIM = 'https://nominatim.openstreetmap.org/reverse'
@@ -13,15 +14,19 @@ interface Parts {
   town?: string
   village?: string
   state?: string
+  postcode?: string
 }
 
-/** "1 City Hall Plaza, Boston, Massachusetts" — street first, then place name, city, state. */
+/** "1 City Hall Plz, Boston, MA 02201" — street first (or the place name), city, state and ZIP. */
 function buildLabel(p: Parts): string {
-  const number = p.housenumber ?? p.house_number
-  const street = p.street ?? p.road
-  const line = street ? (number ? `${number} ${street}` : street) : undefined
-  const city = p.city ?? p.town ?? p.village
-  return [line ?? p.name, city, p.state].filter(Boolean).join(', ')
+  return formatParts({
+    name: p.name,
+    number: p.housenumber ?? p.house_number,
+    street: p.street ?? p.road,
+    city: p.city ?? p.town ?? p.village,
+    state: p.state,
+    postcode: p.postcode,
+  })
 }
 
 export async function searchAddress(q: string, signal?: AbortSignal): Promise<Place[]> {

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowIcon } from '../components/icons'
+import { ArrowIcon, CopyIcon } from '../components/icons'
 import { Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
+import { copyText, shortAddress } from '../location/address'
 import { directionLinks } from '../location/directions'
 import type { Place } from '../domain/types'
 
@@ -51,6 +52,14 @@ export default function Places() {
   const [places, setPlaces] = useState<Place[] | null>(null)
   const [picked, setPicked] = useState<Place | null>(null)
   const [filter, setFilter] = useState('')
+  const [copied, setCopied] = useState('')
+
+  async function copy(p: Place) {
+    if (await copyText(shortAddress(p.label))) {
+      setCopied(p.label)
+      setTimeout(() => setCopied((c) => (c === p.label ? '' : c)), 1800)
+    }
+  }
 
   useEffect(() => {
     let alive = true
@@ -83,6 +92,14 @@ export default function Places() {
         {shown.map((p) => (
           <li key={`${p.label}-${p.lat}-${p.lon}`} className="flex min-h-16 items-center gap-3 py-2 pl-4 pr-2">
             <p className="flex-1">{p.label}</p>
+            <button
+              type="button"
+              aria-label={`Copy address: ${p.label}`}
+              onClick={() => void copy(p)}
+              className="grid size-11 shrink-0 place-items-center rounded-full"
+            >
+              {copied === p.label ? <span className="text-xs font-medium">Copied</span> : <CopyIcon />}
+            </button>
             <button
               type="button"
               aria-label={`Directions to ${p.label}`}
