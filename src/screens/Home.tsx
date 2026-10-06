@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { GearIcon, PinIcon, PlusIcon, ReceiptIcon, ShareIcon } from '../components/icons'
 import { LongPressMenu, useLongPress, type MenuTarget } from '../components/LongPressMenu'
+import PersistenceNote from '../components/PersistenceNote'
 import NewChoiceSheet from '../components/NewChoiceSheet'
 import * as repo from '../data/repo'
 import { formatUSD } from '../domain/money'
@@ -170,6 +171,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
           </button>
         </div>
       </header>
+      <PersistenceNote />
 
       <nav aria-label="Week" className="mt-2 flex items-center justify-between">
         <button type="button" aria-label="Previous week" className={`${iconBtn} text-2xl`} onClick={() => setWeekStart(addDays(weekStart, -7))}>

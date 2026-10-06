@@ -27,11 +27,11 @@ export default function PersistenceNote() {
 
   if (!show) return null
   return (
-    <aside aria-label="Storage notice" className="fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-30 mx-auto max-w-md rounded-2xl bg-surface p-4 text-sm shadow-lg">
-      <p>iOS may clear this app's data if storage runs low. Export a backup regularly in Settings.</p>
+    <aside aria-label="Storage notice" className="mt-2 flex items-center gap-3 rounded-2xl bg-surface py-1 pl-4 pr-1 text-sm">
+      <p className="flex-1 py-2">iOS may clear this app's data if storage runs low. Export a backup regularly in Settings.</p>
       <button
         type="button"
-        className="mt-2 min-h-11 rounded-full px-4 font-medium"
+        className="min-h-11 shrink-0 rounded-full px-4 font-medium"
         onClick={() => {
           try {
             localStorage.setItem(KEY, '1')

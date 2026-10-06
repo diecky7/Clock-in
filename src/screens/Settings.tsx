@@ -1,3 +1,4 @@
+import PersistenceNote from '../components/PersistenceNote'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BackupError, exportBackup, importBackup } from '../data/backup'
 import { shareOrDownload } from '../data/shareFile'
@@ -84,6 +85,7 @@ export default function Settings() {
   const now = today()
   return (
     <Screen title="Settings" back="/">
+      <PersistenceNote />
       <Section title="Employers">
         {activeEmployers(employers).map((e) => (
           <div key={e.id} className={divider}>
