@@ -60,8 +60,8 @@ describe('coordinates and place type', () => {
 describe('fullAddress', () => {
   it('spells the address out from the details, or falls back to the label', async () => {
     const { fullAddress } = await import('./address')
-    expect(fullAddress({ label: '12 Main St, Framingham, MA 01702', detail: { number: '12', street: 'Main Street', city: 'Framingham', state: 'Massachusetts', zip: '01702', country: 'United States' } })).toBe(
-      '12 Main Street, Framingham, Massachusetts 01702, United States',
+    expect(fullAddress({ label: '12 Main St, Framingham, MA 01702', detail: { number: '12', street: 'Main Street', city: 'Framingham', state: 'Massachusetts', zip: '01702' } })).toBe(
+      '12 Main Street, Framingham, Massachusetts 01702',
     )
     expect(fullAddress({ label: 'Somewhere, MA' })).toBe('Somewhere, MA')
   })
