@@ -31,7 +31,7 @@ export default function Places() {
                   key={l.name}
                   href={l.href}
                   aria-label={`${l.name}: ${p.label}`}
-                  className="grid min-h-11 place-items-center rounded-full border border-border bg-bg px-2 text-center text-sm font-medium"
+                  className="grid min-h-11 place-items-center whitespace-nowrap rounded-full border border-border bg-bg px-1 text-center text-[13px] font-medium"
                 >
                   {l.name}
                 </a>

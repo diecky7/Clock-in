@@ -14,4 +14,7 @@ describe('parseHash', () => {
   it('falls back to home for unknown routes', () => {
     expect(parseHash('#/nope/what')).toEqual({ path: '/', params: {} })
   })
+  it('knows the recent places route', () => {
+    expect(parseHash('#/places')).toEqual({ path: '/places', params: {} })
+  })
 })

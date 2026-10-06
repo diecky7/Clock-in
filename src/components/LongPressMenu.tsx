@@ -53,7 +53,7 @@ export function LongPressMenu({
         role="dialog"
         aria-modal="true"
         aria-label={`${noun} actions`}
-        className="mx-auto w-full max-w-md space-y-2 rounded-t-3xl bg-bg p-4 pb-8"
+        className="mx-auto w-full max-w-md space-y-2 rounded-t-3xl border-t border-border bg-bg p-4 pb-8"
         onClick={(e) => e.stopPropagation()}
       >
         {confirming ? (
