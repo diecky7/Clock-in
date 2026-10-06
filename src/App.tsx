@@ -2,6 +2,7 @@ import EntryForm from './screens/EntryForm'
 import ExpenseForm from './screens/ExpenseForm'
 import Export from './screens/Export'
 import Home from './screens/Home'
+import Places from './screens/Places'
 import EmployerEdit from './screens/EmployerEdit'
 import ScheduleEdit from './screens/ScheduleEdit'
 import Settings from './screens/Settings'
@@ -10,6 +11,8 @@ import { useRoute } from './router'
 export default function App() {
   const route = useRoute()
   switch (route.path) {
+    case '/places':
+      return <Places />
     case '/settings':
       return <Settings />
     case '/settings/schedule':

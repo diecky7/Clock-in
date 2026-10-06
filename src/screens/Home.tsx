@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { GearIcon, PlusIcon, ReceiptIcon, ShareIcon } from '../components/icons'
+import { GearIcon, PinIcon, PlusIcon, ReceiptIcon, ShareIcon } from '../components/icons'
 import { LongPressMenu, useLongPress, type MenuTarget } from '../components/LongPressMenu'
 import NewChoiceSheet from '../components/NewChoiceSheet'
 import * as repo from '../data/repo'
@@ -161,9 +161,14 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         <button type="button" aria-label="Settings" className={iconBtn} onClick={() => navigate('/settings')}>
           <GearIcon />
         </button>
-        <button type="button" aria-label="Export" className={iconBtn} onClick={() => navigate(`/export?week=${weekStart}`)}>
-          <ShareIcon />
-        </button>
+        <div className="flex">
+          <button type="button" aria-label="Recent places" className={iconBtn} onClick={() => navigate('/places')}>
+            <PinIcon />
+          </button>
+          <button type="button" aria-label="Export" className={iconBtn} onClick={() => navigate(`/export?week=${weekStart}`)}>
+            <ShareIcon />
+          </button>
+        </div>
       </header>
 
       <nav aria-label="Week" className="mt-2 flex items-center justify-between">

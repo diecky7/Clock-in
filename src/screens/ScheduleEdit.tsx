@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import * as repo from '../data/repo'
-import { Screen, Switch, inputCls } from '../components/ui'
+import { Screen, inputCls } from '../components/ui'
 import type { DaySchedule, Settings } from '../domain/types'
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const DEFAULT_DAY = { in: '07:00', out: '15:30', breakMin: 30 }
+type Times = NonNullable<DaySchedule>
 
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const DEFAULT_DAY: Times = { in: '07:00', out: '15:30', breakMin: 30 }
+
+/** One set of times for every work day; the weekday chips choose which days use it. */
 export default function ScheduleEdit() {
   const [settings, setSettings] = useState<Settings | null>(null)
+  const [times, setTimes] = useState<Times>(DEFAULT_DAY)
   const latest = useRef<Settings | null>(null)
 
   useEffect(() => {
@@ -16,79 +20,81 @@ export default function ScheduleEdit() {
       if (!alive) return
       latest.current = s
       setSettings(s)
+      setTimes(s.schedule.find((d): d is Times => d !== null) ?? DEFAULT_DAY)
     })
     return () => {
       alive = false
     }
   }, [])
 
-  function update(i: number, day: DaySchedule) {
+  function save(on: boolean[], t: Times) {
     const cur = latest.current
     if (!cur) return
-    const schedule = cur.schedule.map((d, idx) => (idx === i ? day : d))
-    const next = { ...cur, schedule }
+    const next = { ...cur, schedule: on.map((x) => (x ? { ...t } : null)) }
     latest.current = next
     setSettings(next)
+    setTimes(t)
     void repo.saveSettings(next)
   }
 
   if (!settings) return <Screen title="Default schedule" back="/settings">{null}</Screen>
 
+  const on = settings.schedule.map((d) => d !== null)
+
   return (
     <Screen title="Default schedule" back="/settings">
       <p className="text-sm text-muted">New entries start with these times.</p>
-      <ul className="mt-4 space-y-3">
-        {DAYS.map((name, i) => {
-          const day = settings.schedule[i]
-          return (
-            <li key={name} className="rounded-2xl bg-surface p-4">
-              <div className="flex min-h-11 items-center justify-between">
-                <span className="font-medium">{name}</span>
-                <span className="flex items-center gap-3 text-sm text-muted">
-                  Off
-                  <Switch checked={day === null} label={`${name} off`} onChange={(off) => update(i, off ? null : { ...DEFAULT_DAY })} />
-                </span>
-              </div>
-              {day && (
-                <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-muted">
-                  <label className="grid min-w-0 gap-1">
-                    In
-                    <input
-                      type="time"
-                      aria-label={`${name} in`}
-                      className={inputCls}
-                      value={day.in}
-                      onChange={(e) => e.target.value && update(i, { ...day, in: e.target.value })}
-                    />
-                  </label>
-                  <label className="grid min-w-0 gap-1">
-                    Out
-                    <input
-                      type="time"
-                      aria-label={`${name} out`}
-                      className={inputCls}
-                      value={day.out}
-                      onChange={(e) => e.target.value && update(i, { ...day, out: e.target.value })}
-                    />
-                  </label>
-                  <label className="col-span-2 grid min-w-0 gap-1">
-                    Break (min)
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      aria-label={`${name} break (min)`}
-                      className={inputCls}
-                      value={day.breakMin}
-                      onChange={(e) => update(i, { ...day, breakMin: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
-                    />
-                  </label>
-                </div>
-              )}
-            </li>
-          )
-        })}
-      </ul>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-surface p-4 text-sm text-muted">
+        <label className="grid min-w-0 gap-1">
+          In
+          <input
+            type="time"
+            aria-label="In"
+            className={inputCls}
+            value={times.in}
+            onChange={(e) => e.target.value && save(on, { ...times, in: e.target.value })}
+          />
+        </label>
+        <label className="grid min-w-0 gap-1">
+          Out
+          <input
+            type="time"
+            aria-label="Out"
+            className={inputCls}
+            value={times.out}
+            onChange={(e) => e.target.value && save(on, { ...times, out: e.target.value })}
+          />
+        </label>
+        <label className="col-span-2 grid min-w-0 gap-1">
+          Break (min)
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            aria-label="Break (min)"
+            className={inputCls}
+            value={times.breakMin}
+            onChange={(e) => save(on, { ...times, breakMin: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+          />
+        </label>
+      </div>
+
+      <h2 className="mt-6 text-sm text-muted">Work days</h2>
+      <div className="mt-2 grid grid-cols-7 gap-1.5">
+        {DAYS.map((name, i) => (
+          <button
+            key={name}
+            type="button"
+            aria-pressed={on[i]}
+            aria-label={name}
+            onClick={() => save(on.map((x, j) => (j === i ? !x : x)), times)}
+            className={`min-h-11 rounded-xl border border-border text-sm font-medium ${on[i] ? 'bg-accent text-accent-fg' : 'bg-bg text-muted'}`}
+          >
+            {name.slice(0, 3)}
+          </button>
+        ))}
+      </div>
     </Screen>
   )
 }
