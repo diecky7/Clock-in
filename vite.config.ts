@@ -15,7 +15,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: makeManifest(base),
-      includeAssets: ['icons/apple-touch-icon.png'],
+      includeAssets: ['icons/apple-touch-icon.png', 'icons/favicon.svg'],
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
         // The map chunk is ~1 MB; cache it so the app opens fully offline.
