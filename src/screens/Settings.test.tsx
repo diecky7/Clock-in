@@ -122,31 +122,41 @@ describe('Settings', () => {
 })
 
 describe('ScheduleEdit', () => {
-  it('shows the defaults and saves a day set to Off as null', async () => {
+  it('shows one set of times and saves a day toggled off as null', async () => {
     const user = userEvent.setup()
     render(<ScheduleEdit />)
-    expect(await screen.findByLabelText('Monday in')).toHaveValue('07:00')
-    await user.click(screen.getByRole('switch', { name: 'Monday off' }))
+    expect(await screen.findByLabelText('In')).toHaveValue('07:00')
+    await user.click(screen.getByRole('button', { name: 'Monday' }))
     await waitFor(async () => expect((await repo.getSettings()).schedule[1]).toBeNull())
+    expect((await repo.getSettings()).schedule[2]?.in).toBe('07:00')
   })
 
   it('ignores a cleared time instead of saving an empty one', async () => {
     const user = userEvent.setup()
     render(<ScheduleEdit />)
-    const input = await screen.findByLabelText('Wednesday in')
+    const input = await screen.findByLabelText('In')
     await user.clear(input)
     expect(input).toHaveValue('07:00')
     await new Promise((r) => setTimeout(r, 30))
     expect((await repo.getSettings()).schedule[3]?.in).toBe('07:00')
   })
 
-  it('saves an edited time and break', async () => {
+  it('applies an edited break to every work day', async () => {
     const user = userEvent.setup()
     render(<ScheduleEdit />)
-    const brk = await screen.findByLabelText('Tuesday break (min)')
+    const brk = await screen.findByLabelText('Break (min)')
     await user.clear(brk)
     await user.type(brk, '45')
     await waitFor(async () => expect((await repo.getSettings()).schedule[2]?.breakMin).toBe(45))
+    expect((await repo.getSettings()).schedule[5]?.breakMin).toBe(45)
+  })
+
+  it('turning a day back on gives it the current times', async () => {
+    const user = userEvent.setup()
+    render(<ScheduleEdit />)
+    await user.click(await screen.findByRole('button', { name: 'Sunday' }))
+    await waitFor(async () => expect((await repo.getSettings()).schedule[0]).not.toBeNull())
+    expect((await repo.getSettings()).schedule[0]?.out).toBe('15:30')
   })
 })
 

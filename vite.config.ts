@@ -8,6 +8,7 @@ const base = process.env.VITE_BASE ?? '/Clock-in/'
 
 export default defineConfig({
   base,
+  worker: { format: 'es' },
   plugins: [
     react(),
     tailwindcss(),
