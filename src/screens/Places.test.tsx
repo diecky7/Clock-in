@@ -65,4 +65,13 @@ describe('Places', () => {
     expect(screen.getByText('5 Beach Rd, Cape Cod, MA')).toBeInTheDocument()
     expect(screen.queryByText('1 Pine Ave, Salem, MA')).not.toBeInTheDocument()
   })
+
+  it('copies the full abbreviated address', async () => {
+    await repo.addRecentPlace({ lat: 1, lon: 2, label: '12 Main Street, Framingham, Massachusetts' })
+    const user = userEvent.setup()
+    render(<Places />)
+    await user.click(await screen.findByRole('button', { name: /^Copy address/ }))
+    expect(await navigator.clipboard.readText()).toBe('12 Main St, Framingham, MA')
+    expect(await screen.findByText('Copied')).toBeInTheDocument()
+  })
 })
