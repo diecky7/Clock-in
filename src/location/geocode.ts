@@ -1,5 +1,5 @@
 import type { Place, PlaceDetail } from '../domain/types'
-import { formatParts, zip5 } from './address'
+import { formatParts, shortAddress, zip5 } from './address'
 
 const PHOTON = 'https://photon.komoot.io/api/'
 const NOMINATIM = 'https://nominatim.openstreetmap.org/reverse'
@@ -88,7 +88,7 @@ export async function reverseGeocode(lat: number, lon: number): Promise<Place> {
   return {
     lat,
     lon,
-    label: structured || data.display_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
+    label: structured || (data.display_name && shortAddress(data.display_name)) || `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
     ...(Object.keys(detail).length ? { detail } : {}),
   }
 }

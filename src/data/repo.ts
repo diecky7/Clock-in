@@ -1,4 +1,5 @@
 import { shiftMinutes } from '../domain/time'
+import { placeKey, shortAddress } from '../location/address'
 import type { Employer, Expense, Place, Settings, TimeEntry } from '../domain/types'
 import {
   getDb,
@@ -10,8 +11,10 @@ import {
   STORE_SETTINGS,
 } from './db'
 
+export const DEFAULT_DAY = { in: '07:00', out: '15:30', breakMin: 30 }
+
 export function defaultSettings(): Settings {
-  const day = () => ({ in: '07:00', out: '15:30', breakMin: 30 })
+  const day = () => ({ ...DEFAULT_DAY })
   return {
     weekStartsOn: 0,
     schedule: [null, day(), day(), day(), day(), day(), null],
@@ -98,8 +101,8 @@ export async function saveSettings(s: Settings): Promise<void> {
 }
 export async function addRecentPlace(p: Place): Promise<void> {
   const s = await getSettings()
-  const rest = s.recentPlaces.filter((x) => x.label !== p.label)
-  await saveSettings({ ...s, recentPlaces: [p, ...rest] })
+  const rest = s.recentPlaces.filter((x) => placeKey(x.label) !== placeKey(p.label))
+  await saveSettings({ ...s, recentPlaces: [{ ...p, label: shortAddress(p.label) }, ...rest] })
 }
 
 /**
@@ -111,9 +114,9 @@ export async function listAllPlaces(): Promise<Place[]> {
   const seen = new Set<string>()
   const all: Place[] = []
   const add = (p: Place | undefined) => {
-    if (p && !seen.has(p.label)) {
-      seen.add(p.label)
-      all.push(p)
+    if (p && !seen.has(placeKey(p.label))) {
+      seen.add(placeKey(p.label))
+      all.push({ ...p, label: shortAddress(p.label) })
     }
   }
   settings.recentPlaces.forEach(add)
@@ -131,7 +134,7 @@ export interface PlaceHistory {
 
 /** How often, when and for whom you worked at an address (matched by its label). */
 export async function placeHistory(label: string): Promise<PlaceHistory> {
-  const entries = (await (await getDb()).getAll(STORE_ENTRIES)).filter((e) => e.place?.label === label)
+  const entries = (await (await getDb()).getAll(STORE_ENTRIES)).filter((e) => e.place && placeKey(e.place.label) === placeKey(label))
   const dates = entries.map((e) => e.start.slice(0, 10)).sort()
   return {
     times: entries.length,

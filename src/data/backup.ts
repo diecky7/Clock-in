@@ -66,15 +66,17 @@ const isDateTime = (v: unknown): v is string => isStr(v) && DATETIME_RE.test(v)
 const validEmployer = (r: unknown): r is Employer =>
   isObj(r) && isStr(r.id) && isStr(r.name) && isBool(r.overtimeEnabled) && isBool(r.archived) &&
   isArr(r.rates) && r.rates.every((x) => isObj(x) && isDate(x.from) && isCents(x.cents))
+const validPlace = (p: unknown): boolean =>
+  isObj(p) && isNum(p.lat) && isNum(p.lon) && isStr(p.label) && (p.detail === undefined || isObj(p.detail))
 const validEntry = (r: unknown): r is TimeEntry =>
   isObj(r) && isStr(r.id) && isStr(r.employerId) && r.employerId !== '' &&
-  isDateTime(r.start) && isDateTime(r.end) && isCents(r.breakMin) && isCents(r.rateCents)
+  isDateTime(r.start) && isDateTime(r.end) && isCents(r.breakMin) && isCents(r.rateCents) &&
+  (r.place === undefined || validPlace(r.place))
 const validExpense = (r: unknown): r is Expense =>
   isObj(r) && isStr(r.id) && isStr(r.employerId) && isDate(r.date) && isStr(r.description) &&
   isCents(r.amountCents) && isArr(r.photoIds) && r.photoIds.every(isStr)
 const validDay = (d: unknown): boolean =>
   d === null || (isObj(d) && isStr(d.in) && isStr(d.out) && isNum(d.breakMin))
-const validPlace = (p: unknown): boolean => isObj(p) && isNum(p.lat) && isNum(p.lon) && isStr(p.label)
 const validSettings = (r: unknown): r is Settings =>
   isObj(r) &&
   isNum(r.weekStartsOn) && Number.isInteger(r.weekStartsOn) && r.weekStartsOn >= 0 && r.weekStartsOn <= 6 &&

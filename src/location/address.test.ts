@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { abbreviateStreet, copyText, formatParts, shortAddress, zip5 } from './address'
+import { abbreviateStreet, copyText, formatParts, placeKey, shortAddress, zip5 } from './address'
 
 describe('address format', () => {
   it('abbreviates street types and directions but not names', () => {
@@ -26,6 +26,14 @@ describe('address format', () => {
   it('shortens older saved labels when copying', () => {
     expect(shortAddress('12 Main Street, Framingham, Massachusetts')).toBe('12 Main St, Framingham, MA')
     expect(shortAddress('12 Main St, Framingham, MA 01702')).toBe('12 Main St, Framingham, MA 01702')
+  })
+
+  it('shortens state names next to a ZIP, trims ZIP+4, and is idempotent', () => {
+    expect(shortAddress('1 Main Street, Boston, Massachusetts 01702')).toBe('1 Main St, Boston, MA 01702')
+    expect(shortAddress('1 Main St, Boston, MA 02201-1234')).toBe('1 Main St, Boston, MA 02201')
+    const once = shortAddress('12 Main Street, Framingham, Massachusetts 01702-4455')
+    expect(shortAddress(once)).toBe(once)
+    expect(placeKey('12 Main Street, Framingham, Massachusetts')).toBe(placeKey('12 Main St, Framingham, MA'))
   })
 
   it('copyText uses the clipboard and reports failure', async () => {

@@ -10,14 +10,13 @@ import { today } from '../domain/today'
 import type { Employer, Place, Settings, TimeEntry } from '../domain/types'
 import { addDays } from '../domain/weeks'
 import { getCurrentPosition, reverseGeocode, searchAddress } from '../location/geocode'
-import { copyText, shortAddress } from '../location/address'
+import { copyText, placeKey, shortAddress } from '../location/address'
 import { DEFAULT_NEARBY_FT, formatDistance, nearestWithin } from '../location/distance'
 import { navigate } from '../router'
 
 // The map library is large; load it only when this form opens.
 const MapPicker = lazy(() => import('../location/MapPicker'))
 
-const FALLBACK_DAY = { in: '07:00', out: '15:30', breakMin: 30 }
 const DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
 
 function parseBreak(text: string): number {
@@ -27,7 +26,7 @@ function parseBreak(text: string): number {
 
 function defaultsFor(date: string, settings: Settings) {
   const [y, m, d] = date.split('-').map(Number)
-  const day = settings.schedule[new Date(y, m - 1, d).getDay()] ?? settings.schedule.find(Boolean) ?? FALLBACK_DAY
+  const day = settings.schedule[new Date(y, m - 1, d).getDay()] ?? settings.schedule.find(Boolean) ?? repo.DEFAULT_DAY
   const start = `${date}T${day.in}`
   const sameDayEnd = `${date}T${day.out}`
   const end = sameDayEnd > start ? sameDayEnd : `${addDays(date, 1)}T${day.out}`
@@ -122,7 +121,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
       if (auto && userChose.current) return
       setPlace(p)
       const near = nearestWithin(pos, allPlaces, settings?.nearbyFeet ?? DEFAULT_NEARBY_FT)
-      setNearby(near && near.place.label !== p.label ? { existing: near.place, found: p, ft: near.ft } : null)
+      setNearby(near && placeKey(near.place.label) !== placeKey(p.label) ? { existing: near.place, found: p, ft: near.ft } : null)
     } catch {
       if (!(auto && userChose.current)) setLocNote("Couldn't get your location. Search for an address instead.")
     } finally {
@@ -211,7 +210,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
       end,
       breakMin: brk,
       rateCents: keepRate ? existing.rateCents : rateOn(employer, date),
-      ...(place ? { place } : {}),
+      ...(place ? { place: { ...place, label: shortAddress(place.label) } } : {}),
     }
     try {
       await repo.saveEntry(entry)
@@ -247,7 +246,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
   const recents = allPlaces.slice(0, 8)
   const q = query.trim().toLowerCase()
   const saved = q ? allPlaces.filter((p) => p.label.toLowerCase().includes(q)).slice(0, 4) : []
-  const list = q ? [...saved, ...suggestions.filter((s) => !saved.some((p) => p.label === s.label))] : recents
+  const list = q ? [...saved, ...suggestions.filter((s) => !saved.some((p) => placeKey(p.label) === placeKey(s.label)))] : recents
 
   return (
     <Screen title={title} back="/">
@@ -321,7 +320,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
         {nearby && (
           <div role="alert" className="mt-3 rounded-2xl bg-surface p-4">
             <p className="text-sm">
-              You're about {formatDistance(nearby.ft)} from <span className="font-medium">{nearby.existing.label}</span>. Which address should this entry use?
+              You're about {formatDistance(nearby.ft)} from <span className="font-medium">{shortAddress(nearby.existing.label)}</span>. Which address should this entry use?
             </p>
             <div className="mt-3 grid gap-2">
               <button
@@ -354,7 +353,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
         {place && (
           <div className="mt-2 flex items-start justify-between gap-3">
             <p data-testid="chosen-place" className="text-sm">
-              {place.label}
+              {shortAddress(place.label)}
             </p>
             <div className="flex shrink-0">
               <button

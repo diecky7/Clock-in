@@ -15,7 +15,7 @@ describe('Places', () => {
     expect(await screen.findByText('No addresses yet')).toBeInTheDocument()
   })
 
-  it('hides the map apps until the arrow is tapped, then offers all three', async () => {
+  it('hides the map apps until the address is tapped, then offers all three', async () => {
     await repo.addRecentPlace({ lat: 42.28, lon: -71.41, label: '12 Main St, Framingham, MA' })
     const user = userEvent.setup()
     render(<Places />)
@@ -27,6 +27,18 @@ describe('Places', () => {
     expect(screen.getByRole('link', { name: 'Apple Maps' })).toHaveAttribute('href', expect.stringContaining('maps.apple.com/?daddr=42.28,-71.41'))
     expect(screen.getByRole('link', { name: 'Google Maps' })).toHaveAttribute('href', expect.stringContaining('destination=42.28,-71.41'))
     expect(screen.getByRole('link', { name: 'Waze' })).toHaveAttribute('href', expect.stringContaining('ll=42.28,-71.41&navigate=yes'))
+  })
+
+  it('lists two spellings of one address once, in short form', async () => {
+    await repo.saveEmployer({ id: 'e', name: 'A', overtimeEnabled: false, archived: false, rates: [{ from: '2025-01-01', cents: 3000 }] })
+    await repo.saveEntry({
+      id: 't', employerId: 'e', start: '2025-10-06T07:00', end: '2025-10-06T15:00', breakMin: 0, rateCents: 3000,
+      place: { lat: 1, lon: 2, label: '12 Main Street, Framingham, Massachusetts' },
+    })
+    await repo.addRecentPlace({ lat: 1, lon: 2, label: '12 Main St, Framingham, MA' })
+    render(<Places />)
+    expect(await screen.findAllByText('12 Main St, Framingham, MA')).toHaveLength(1)
+    expect(screen.queryByText(/Massachusetts/)).not.toBeInTheDocument()
   })
 
   it('Cancel and Escape close the box', async () => {
@@ -94,6 +106,7 @@ describe('Places', () => {
     expect(within(box).getByText('Waze')).toBeInTheDocument() // short caption under the icon
     expect(within(box).getByText('Apple')).toBeInTheDocument()
     expect(within(box).getByText('Middlesex County')).toBeInTheDocument()
+    expect(within(box).getByText('Main St')).toBeInTheDocument() // street shortened in the details too
     expect(within(box).getByText('Residential street')).toBeInTheDocument()
     expect(within(box).getByText('42.280000')).toBeInTheDocument()
     expect(within(box).getByText('±16 ft')).toBeInTheDocument()

@@ -6,12 +6,11 @@ import type { DaySchedule, Settings } from '../domain/types'
 type Times = NonNullable<DaySchedule>
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const DEFAULT_DAY: Times = { in: '07:00', out: '15:30', breakMin: 30 }
 
 /** One set of times for every work day; the weekday chips choose which days use it. */
 export default function ScheduleEdit() {
   const [settings, setSettings] = useState<Settings | null>(null)
-  const [times, setTimes] = useState<Times>(DEFAULT_DAY)
+  const [times, setTimes] = useState<Times>(repo.DEFAULT_DAY)
   const latest = useRef<Settings | null>(null)
 
   useEffect(() => {
@@ -20,7 +19,7 @@ export default function ScheduleEdit() {
       if (!alive) return
       latest.current = s
       setSettings(s)
-      setTimes(s.schedule.find((d): d is Times => d !== null) ?? DEFAULT_DAY)
+      setTimes(s.schedule.find((d): d is Times => d !== null) ?? repo.DEFAULT_DAY)
     })
     return () => {
       alive = false
