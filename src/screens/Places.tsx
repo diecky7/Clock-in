@@ -17,7 +17,7 @@ function Group({ title, rows }: { title: string; rows: Row[] }) {
   const shown = rows.filter((r): r is [string, string] => Boolean(r[1]))
   if (shown.length === 0) return null
   return (
-    <section aria-label={title} className="mt-4 overflow-hidden rounded-2xl bg-bg">
+    <section aria-label={title} className="mt-4 overflow-hidden rounded-b-2xl rounded-t-md bg-bg">
       <h2 className="bg-fg px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-bg">{title}</h2>
       <dl className="divide-y divide-border">
         {shown.map(([k, v]) => (
@@ -128,7 +128,7 @@ function DirectionsDialog({ place: saved, employers, onClose }: { place: Place; 
                 ['Last time', history.last ? formatDate(history.last) : undefined],
               ]}
             />
-            <section aria-label="Employers" className="mt-4 overflow-hidden rounded-2xl bg-bg">
+            <section aria-label="Employers" className="mt-4 overflow-hidden rounded-b-2xl rounded-t-md bg-bg">
               <h2 className="bg-fg px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-bg">Employers</h2>
               <div className="divide-y divide-border">
                 {history.byEmployer.map((v) => (
