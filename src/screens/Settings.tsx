@@ -121,7 +121,7 @@ export default function Settings() {
               <span className="text-muted">{scheduleSummary(settings)}</span>
             </button>
           </div>
-          <div className={`${rowCls} ${divider}`}>
+          <div className={`${rowCls} ${divider} py-2`}>
             <label htmlFor="week-start">Week starts on</label>
             <select
               id="week-start"
@@ -136,7 +136,7 @@ export default function Settings() {
               ))}
             </select>
           </div>
-          <div className={`${rowCls} ${divider}`}>
+          <div className={`${rowCls} ${divider} py-2`}>
             <label htmlFor="nearby">Ask about saved address within</label>
             <select
               id="nearby"

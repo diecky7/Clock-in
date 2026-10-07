@@ -18,7 +18,7 @@ export function Screen({ title, back, children }: { title: string; back?: string
             ‹
           </button>
         )}
-        <h1 className="text-xl font-semibold">{title}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
       </header>
       {children}
     </main>
@@ -28,8 +28,8 @@ export function Screen({ title, back, children }: { title: string; back?: string
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mt-6 overflow-hidden rounded-b-2xl rounded-t-md bg-surface" aria-label={title}>
-      <h2 className="bg-title px-6 py-1.5 text-xs font-medium uppercase tracking-wide text-title-fg">{title}</h2>
-      <div className="p-2">{children}</div>
+      <h2 className="bg-title px-4 py-3 text-lg font-semibold text-title-fg">{title}</h2>
+      <div>{children}</div>
     </section>
   )
 }

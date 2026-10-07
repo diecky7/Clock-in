@@ -18,10 +18,10 @@ function Group({ title, rows }: { title: string; rows: Row[] }) {
   if (shown.length === 0) return null
   return (
     <section aria-label={title} className="mt-4 overflow-hidden rounded-b-2xl rounded-t-md bg-bg">
-      <h2 className="bg-title px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-title-fg">{title}</h2>
+      <h2 className="bg-title px-4 py-3 text-lg font-semibold text-title-fg">{title}</h2>
       <dl className="divide-y divide-border">
         {shown.map(([k, v]) => (
-          <div key={k} className="flex items-baseline justify-between gap-4 px-3 py-2.5 text-sm">
+          <div key={k} className="flex items-baseline justify-between gap-4 px-4 py-3.5 text-base">
             <dt className="shrink-0 text-muted">{k}</dt>
             <dd className="text-right">{v}</dd>
           </div>
@@ -74,11 +74,11 @@ function DirectionsDialog({ place: saved, employers, onClose }: { place: Place; 
 
   const d = place.detail ?? {}
   const names = new Map(employers.map((e) => [e.id, e.name]))
-  const btn = 'min-h-12 rounded-full border border-border bg-bg px-4 text-sm font-medium'
+  const btn = 'min-h-12 rounded-full border border-border bg-bg px-4 text-base font-medium'
 
   return (
     <Modal label={`Directions to ${place.label}`} initialFocus={first} onClose={onClose}>
-        <p className="px-2 pb-3 pt-1 text-center text-base font-medium">{fullAddress(place)}</p>
+        <p className="px-2 pb-4 pt-1 text-center text-xl font-semibold">{fullAddress(place)}</p>
 
         <div className="grid grid-cols-3 gap-2">
           {directionLinks(place).map((l, i) => {
@@ -129,15 +129,15 @@ function DirectionsDialog({ place: saved, employers, onClose }: { place: Place; 
               ]}
             />
             <section aria-label="Employers" className="mt-4 overflow-hidden rounded-b-2xl rounded-t-md bg-bg">
-              <h2 className="bg-title px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-title-fg">Employers</h2>
+              <h2 className="bg-title px-4 py-3 text-lg font-semibold text-title-fg">Employers</h2>
               <div className="divide-y divide-border">
                 {history.byEmployer.map((v) => (
                   <details key={v.employerId} className="group">
-                    <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                    <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-base font-medium [&::-webkit-details-marker]:hidden">
                       <span>{names.get(v.employerId) ?? 'Employer'}</span>
                       <span aria-hidden className="text-muted transition-transform group-open:rotate-90">›</span>
                     </summary>
-                    <dl className="divide-y divide-border border-t border-border text-sm">
+                    <dl className="divide-y divide-border border-t border-border text-base">
                       {(
                         [
                           ['Times worked', String(v.times)],
@@ -146,7 +146,7 @@ function DirectionsDialog({ place: saved, employers, onClose }: { place: Place; 
                           ['Last time', formatDate(v.last)],
                         ] as const
                       ).map(([k, val]) => (
-                        <div key={k} className="flex items-baseline justify-between gap-4 px-3 py-2.5">
+                        <div key={k} className="flex items-baseline justify-between gap-4 px-4 py-3.5">
                           <dt className="text-muted">{k}</dt>
                           <dd>{val}</dd>
                         </div>

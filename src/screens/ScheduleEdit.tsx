@@ -43,7 +43,7 @@ export default function ScheduleEdit() {
 
   return (
     <Screen title="Default schedule" back="/settings">
-      <p className="text-sm text-muted">New entries start with these times.</p>
+      <p className="mb-4 mt-2 text-base text-muted">New entries start with these times.</p>
 
       <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-surface p-4">
         <DateTimeField
@@ -74,7 +74,7 @@ export default function ScheduleEdit() {
         </label>
       </div>
 
-      <h2 className="mt-6 text-sm text-muted">Work days</h2>
+      <h2 className="mt-8 text-lg font-semibold">Work days</h2>
       <div className="mt-2 grid grid-cols-7 gap-1.5">
         {DAYS.map((name, i) => (
           <button

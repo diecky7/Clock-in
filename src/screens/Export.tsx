@@ -91,7 +91,7 @@ export default function Export({ week }: { week?: string }) {
 
   return (
     <Screen title="Export week" back="/">
-      {weekStart && <p className="text-lg font-medium">{weekLabel(weekStart)}</p>}
+      {weekStart && <p className="mt-2 text-lg font-medium text-muted">{weekLabel(weekStart)}</p>}
 
       {summary && rows.length === 0 ? (
         <p className="mt-8 text-center text-muted">Nothing to export for this week</p>

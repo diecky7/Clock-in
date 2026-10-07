@@ -81,7 +81,7 @@ export default function Summary() {
           </div>
 
           <section aria-label="Totals" className="mt-8 text-center">
-            <p className="text-sm text-muted">{label}</p>
+            <p className="h-5 text-base text-muted">{view === 'Week' ? '' : label}</p>
             <p className="mt-1 text-6xl font-semibold tabular-nums tracking-tight">{formatUSD(sum.totalCents)}</p>
           </section>
           <dl className="mt-6 divide-y divide-border overflow-hidden rounded-2xl bg-surface">
