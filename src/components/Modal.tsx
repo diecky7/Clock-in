@@ -8,6 +8,12 @@ const PLACEMENT = {
     overlay: 'grid place-items-center p-4',
     panel: 'max-h-[88dvh] w-full max-w-sm overflow-y-auto rounded-3xl border border-border bg-surface p-4',
   },
+  // Small menu that opens up and to the left of the round "+" button.
+  popover: {
+    overlay: '',
+    panel:
+      'fixed bottom-[calc(max(1.5rem,env(safe-area-inset-bottom))+3.5rem)] right-[5.25rem] w-44 space-y-1 rounded-2xl border border-border bg-surface p-1.5 shadow-lg',
+  },
   bottom: {
     overlay: 'flex items-end',
     panel: 'mx-auto w-full max-w-md space-y-2 rounded-t-3xl border-t border-border bg-bg p-4 pb-8',
@@ -27,7 +33,7 @@ export default function Modal({
 }: {
   label: string
   onClose: () => void
-  placement?: 'center' | 'bottom'
+  placement?: 'center' | 'bottom' | 'popover'
   initialFocus?: RefObject<HTMLElement | null>
   children: ReactNode
 }) {
@@ -78,7 +84,7 @@ export default function Modal({
   const cls = PLACEMENT[placement]
   return createPortal(
     <div
-      className={`fixed inset-0 z-20 bg-black/40 ${cls.overlay}`}
+      className={`fixed inset-0 z-20 ${placement === 'popover' ? 'bg-black/20' : 'bg-black/40'} ${cls.overlay}`}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div ref={panel} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} className={cls.panel}>

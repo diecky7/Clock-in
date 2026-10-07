@@ -5,12 +5,15 @@ import Home from './screens/Home'
 import Places from './screens/Places'
 import EmployerEdit from './screens/EmployerEdit'
 import ScheduleEdit from './screens/ScheduleEdit'
+import Summary from './screens/Summary'
 import Settings from './screens/Settings'
 import { useRoute } from './router'
 
 export default function App() {
   const route = useRoute()
   switch (route.path) {
+    case '/summary':
+      return <Summary />
     case '/places':
       return <Places />
     case '/settings':

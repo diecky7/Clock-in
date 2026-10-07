@@ -16,6 +16,7 @@ const PATTERNS = [
   '/settings/schedule',
   '/export',
   '/places',
+  '/summary',
 ]
 
 export function parseHash(hash: string): Route {
