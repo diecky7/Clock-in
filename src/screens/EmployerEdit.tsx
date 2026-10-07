@@ -85,7 +85,7 @@ export default function EmployerEdit({ id }: { id: string }) {
       </div>
 
       {employer && (
-        <section className="mt-6 overflow-hidden rounded-2xl bg-surface" aria-label="Rate history">
+        <section className="mt-6 overflow-hidden rounded-b-2xl rounded-t-md bg-surface" aria-label="Rate history">
           <h2 className="bg-fg px-4 py-1.5 text-xs font-medium uppercase tracking-wide text-bg">Rate history</h2>
           <ul>
             {[...employer.rates].reverse().map((r) => (
