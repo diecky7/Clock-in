@@ -8,6 +8,12 @@ describe('address format', () => {
     expect(abbreviateStreet('1 City Hall Plaza')).toBe('1 City Hall Plz')
     expect(abbreviateStreet('7 Summer Street Extension')).toBe('7 Summer St Ext')
     expect(abbreviateStreet('Street')).toBe('Street')
+    expect(abbreviateStreet('12 Shady Lane Drive')).toBe('12 Shady Lane Dr')
+    expect(abbreviateStreet('12 Shady Lane Dr')).toBe('12 Shady Lane Dr')
+  })
+
+  it('treats old and new abbreviations of the same address as one key', () => {
+    expect(placeKey('12 Shady Ln Dr, Burlington, MA 01803')).toBe(placeKey('12 Shady Lane Drive, Burlington, MA 01803'))
   })
 
   it('builds "street, city, ST 12345"', () => {

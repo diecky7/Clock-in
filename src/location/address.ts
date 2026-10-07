@@ -31,7 +31,10 @@ export function abbreviateStreet(line: string): string {
       const last = i === words.length - 1
       // A direction leads ("N Main St") or trails ("Park Ave S"); in the middle it is part of a name.
       if (DIRECTION[key] && (i === start || last) && words.length > start + 1) return DIRECTION[key]
-      if (SUFFIX[key] && i > 0 && (last || (words[i + 1] && (DIRECTION[words[i + 1].toLowerCase()] || SUFFIX[words[i + 1].toLowerCase()])))) return SUFFIX[key]
+      // Only the real street type is abbreviated; an earlier suffix word ("Lane" in "Shady Lane Drive") is part of the name,
+      // unless what follows is a direction or "Extension" ("Summer Street Extension").
+      const next = words[i + 1]?.toLowerCase().replace(/\.$/, '')
+      if (SUFFIX[key] && i > 0 && (last || (next && (DIRECTION[next] || next === 'extension' || next === 'ext')))) return SUFFIX[key]
       return w
     })
     .join(' ')
@@ -76,7 +79,15 @@ export function shortAddress(label: string): string {
 }
 
 /** Identity of an address, so two spellings of it ("Massachusetts" / "MA") count as one. */
-export const placeKey = (label: string): string => shortAddress(label).toLowerCase()
+export const placeKey = (label: string): string => {
+  const [street, ...rest] = shortAddress(label).split(',')
+  // Older saved labels abbreviated every suffix ("Shady Ln Dr"); compare street words in abbreviated form so both match.
+  const norm = street
+    .split(/\s+/)
+    .map((w) => SUFFIX[w.toLowerCase().replace(/\.$/, '')] ?? w)
+    .join(' ')
+  return [norm, ...rest].join(',').toLowerCase()
+}
 
 /** Copies text to the clipboard; falls back to a hidden textarea where the async API is missing. */
 export async function copyText(text: string): Promise<boolean> {
