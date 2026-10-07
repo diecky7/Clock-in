@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as repo from '../data/repo'
+import DateTimeField from '../components/DateTimeField'
 import { Screen, inputCls } from '../components/ui'
 import type { DaySchedule, Settings } from '../domain/types'
 
@@ -44,28 +45,22 @@ export default function ScheduleEdit() {
     <Screen title="Default schedule" back="/settings">
       <p className="text-sm text-muted">New entries start with these times.</p>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-surface p-4 text-sm text-muted">
-        <label className="grid min-w-0 gap-1">
-          In
-          <input
-            type="time"
-            aria-label="In"
-            className={inputCls}
-            value={times.in}
-            onChange={(e) => e.target.value && save(on, { ...times, in: e.target.value })}
-          />
-        </label>
-        <label className="grid min-w-0 gap-1">
-          Out
-          <input
-            type="time"
-            aria-label="Out"
-            className={inputCls}
-            value={times.out}
-            onChange={(e) => e.target.value && save(on, { ...times, out: e.target.value })}
-          />
-        </label>
-        <label className="col-span-2 grid min-w-0 gap-1">
+      <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-surface p-4">
+        <DateTimeField
+          type="time"
+          label="In"
+          className=""
+          value={times.in}
+          onChange={(v) => v && save(on, { ...times, in: v })}
+        />
+        <DateTimeField
+          type="time"
+          label="Out"
+          className=""
+          value={times.out}
+          onChange={(v) => v && save(on, { ...times, out: v })}
+        />
+        <label className="col-span-2 grid min-w-0 gap-1 text-sm text-muted">
           Break (min)
           <input
             type="number"

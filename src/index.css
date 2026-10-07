@@ -36,3 +36,12 @@ body {
   outline: 2px solid var(--fg);
   outline-offset: 2px;
 }
+
+/* iOS Safari sizes date/time inputs by its own rules (ignores width:100%); never let one widen the page. */
+input[type='date'],
+input[type='time'],
+input[type='datetime-local'] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+}

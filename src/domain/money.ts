@@ -6,10 +6,3 @@ export function formatUSD(cents: number): string {
   const withCommas = String(dollars).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return `${neg ? '-' : ''}$${withCommas}.${rem}`
 }
-
-export function parseUSD(text: string): number | null {
-  const cleaned = text.trim().replace(/^\$/, '').replace(/,/g, '')
-  if (!/^(\d+(\.\d{0,2})?|\.\d{1,2})$/.test(cleaned)) return null
-  const cents = Math.round(parseFloat(cleaned) * 100)
-  return cents > 0 ? cents : null
-}

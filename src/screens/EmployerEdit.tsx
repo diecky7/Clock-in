@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import * as repo from '../data/repo'
 import { Field, PrimaryButton, Screen, Switch, inputCls } from '../components/ui'
-import { formatUSD, parseUSD } from '../domain/money'
+import MoneyInput from '../components/MoneyInput'
+import { formatUSD } from '../domain/money'
 import { addRateChange, rateOn } from '../domain/rates'
 import { formatDate } from '../domain/time'
 import { today } from '../domain/today'
@@ -13,7 +14,7 @@ export default function EmployerEdit({ id }: { id: string }) {
   const [loaded, setLoaded] = useState(isNew)
   const [employer, setEmployer] = useState<Employer | null>(null)
   const [name, setName] = useState('')
-  const [rate, setRate] = useState('')
+  const [rate, setRate] = useState<number | null>(null)
   const [overtime, setOvertime] = useState(false)
   const [errors, setErrors] = useState<{ name?: string; rate?: string }>({})
   const [confirmArchive, setConfirmArchive] = useState(false)
@@ -27,7 +28,7 @@ export default function EmployerEdit({ id }: { id: string }) {
       setEmployer(e)
       if (e) {
         setName(e.name)
-        setRate((rateOn(e, today()) / 100).toFixed(2))
+        setRate(rateOn(e, today()))
         setOvertime(e.overtimeEnabled)
       }
       setLoaded(true)
@@ -38,7 +39,7 @@ export default function EmployerEdit({ id }: { id: string }) {
   }, [id, isNew])
 
   async function save() {
-    const cents = parseUSD(rate)
+    const cents = rate && rate > 0 ? rate : null
     const next: typeof errors = {}
     if (!name.trim()) next.name = 'Enter a name'
     if (cents === null) next.rate = 'Enter a valid rate'
@@ -74,14 +75,7 @@ export default function EmployerEdit({ id }: { id: string }) {
         <input id="emp-name" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
       </Field>
       <Field label="Hourly rate" htmlFor="emp-rate" error={errors.rate}>
-        <input
-          id="emp-rate"
-          className={inputCls}
-          inputMode="decimal"
-          placeholder="0.00"
-          value={rate}
-          onChange={(e) => setRate(e.target.value)}
-        />
+        <MoneyInput id="emp-rate" cents={rate} onChange={setRate} />
       </Field>
       {!isNew && <p className="mt-2 text-sm text-muted">New rate applies to new entries only</p>}
 
