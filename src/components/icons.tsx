@@ -80,3 +80,11 @@ export const NavArrowIcon = () => (
     <path d="m4 11 16-7-7 16-2-7z" />
   </svg>
 )
+
+export const ChartIcon = () => (
+  <svg {...base}>
+    <path d="M4 20V4" />
+    <path d="M4 20h16" />
+    <path d="M8 16v-4M12 16V8M16 16v-6" />
+  </svg>
+)

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { GearIcon, PinIcon, PlusIcon, ReceiptIcon, ShareIcon } from '../components/icons'
+import { ChartIcon, GearIcon, PinIcon, PlusIcon, ReceiptIcon, ShareIcon } from '../components/icons'
 import { LongPressMenu, useLongPress, type MenuTarget } from '../components/LongPressMenu'
 import PersistenceNote from '../components/PersistenceNote'
 import NewChoiceSheet from '../components/NewChoiceSheet'
@@ -163,6 +163,9 @@ export default function Home({ initialDate }: { initialDate?: string }) {
           <GearIcon />
         </button>
         <div className="flex">
+          <button type="button" aria-label="Summary" className={iconBtn} onClick={() => navigate('/summary')}>
+            <ChartIcon />
+          </button>
           <button type="button" aria-label="Places" className={iconBtn} onClick={() => navigate('/places')}>
             <PinIcon />
           </button>
