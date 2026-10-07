@@ -172,3 +172,25 @@ export async function placeHistory(label: string): Promise<PlaceHistory> {
     byEmployer,
   }
 }
+
+/** Re-checks every saved ZIP against the USPS list (fixes wrong ZIPs that came from map data). */
+export async function repairZips(): Promise<number> {
+  const { safeFixZip } = await import('../location/zip')
+  let changed = 0
+  const s = await getSettings()
+  const recentPlaces = await Promise.all(s.recentPlaces.map(safeFixZip))
+  if (recentPlaces.some((p, i) => p !== s.recentPlaces[i])) {
+    changed += recentPlaces.filter((p, i) => p !== s.recentPlaces[i]).length
+    await saveSettings({ ...s, recentPlaces })
+  }
+  const db = await getDb()
+  for (const e of await db.getAll(STORE_ENTRIES)) {
+    if (!e.place) continue
+    const place = await safeFixZip(e.place)
+    if (place !== e.place) {
+      changed++
+      await db.put(STORE_ENTRIES, { ...e, place })
+    }
+  }
+  return changed
+}

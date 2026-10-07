@@ -23,6 +23,12 @@ export default defineConfig({
         navigateFallback: `${base}index.html`,
         runtimeCaching: [
           {
+            // USPS ZIP lists, one small file per state, fetched only when needed.
+            urlPattern: /\/zips\/[A-Z]{2}\.json$/,
+            handler: 'CacheFirst',
+            options: { cacheName: 'zip-lists', expiration: { maxEntries: 10 } },
+          },
+          {
             urlPattern: /^https:\/\/tiles\.openfreemap\.org\//,
             handler: 'StaleWhileRevalidate',
             options: { cacheName: 'map-tiles', expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 30 } },
