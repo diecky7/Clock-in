@@ -1,80 +1,106 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Screen } from '../components/ui'
 import * as repo from '../data/repo'
 import { formatUSD } from '../domain/money'
-import { addDays } from '../domain/weeks'
 import { formatHours } from '../domain/time'
 import { today } from '../domain/today'
-import { monthRange, summarizePeriod, yearRange, type PeriodSummary } from '../domain/summary'
-import { weekStartOf } from '../domain/weeks'
-
-interface Period {
-  title: string
-  range: string
-  sum: PeriodSummary
-}
+import { monthRange, summarizePeriod, yearRange } from '../domain/summary'
+import type { Employer, Expense, TimeEntry } from '../domain/types'
+import { addDays, weekLabel, weekStartOf } from '../domain/weeks'
 
 const MONTH = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const VIEWS = ['Week', 'Month', 'Year'] as const
+type View = (typeof VIEWS)[number]
 
 export default function Summary() {
-  const [periods, setPeriods] = useState<Period[] | null>(null)
+  const [weekStartsOn, setWeekStartsOn] = useState<number | null>(null)
+  const [weekStart, setWeekStart] = useState<string | null>(null)
+  const [view, setView] = useState<View>('Week')
+  const [data, setData] = useState<{ employers: Employer[]; entries: TimeEntry[]; expenses: Expense[] } | null>(null)
 
   useEffect(() => {
     let alive = true
     void (async () => {
-      const now = today()
-      const settings = await repo.getSettings()
-      const ws = weekStartOf(now, settings.weekStartsOn)
-      const ranges: [string, string, string][] = [
-        ['This week', `${ws} – ${addDays(ws, 6)}`, ws],
-        ['This month', `${MONTH[Number(now.slice(5, 7)) - 1]} ${now.slice(0, 4)}`, ''],
-        ['This year', now.slice(0, 4), ''],
-      ]
-      const bounds: [string, string][] = [[ws, addDays(ws, 6)], monthRange(now), yearRange(now)]
-      const from = bounds.reduce((a, b) => (a < b[0] ? a : b[0]), bounds[0][0])
-      const to = bounds.reduce((a, b) => (a > b[1] ? a : b[1]), bounds[0][1])
+      const s = await repo.getSettings()
       const [employers, entries, expenses] = await Promise.all([
         repo.listEmployers(),
-        repo.listEntriesBetween(from, to),
-        repo.listExpensesBetween(from, to),
+        repo.listEntriesBetween('0000-01-01', '9999-12-31'),
+        repo.listExpensesBetween('0000-01-01', '9999-12-31'),
       ])
-      const list = ranges.map(([title, range], i) => ({
-        title,
-        range: i === 0 ? `${bounds[0][0]} to ${bounds[0][1]}` : range,
-        sum: summarizePeriod({ from: bounds[i][0], to: bounds[i][1], weekStartsOn: settings.weekStartsOn, entries, expenses, employers }),
-      }))
-      if (alive) setPeriods(list)
-    })().catch(() => alive && setPeriods([]))
+      if (!alive) return
+      setData({ employers, entries, expenses })
+      setWeekStartsOn(s.weekStartsOn)
+      setWeekStart(weekStartOf(today(), s.weekStartsOn))
+    })().catch(() => alive && setData({ employers: [], entries: [], expenses: [] }))
     return () => {
       alive = false
     }
   }, [])
 
+  // The week drives everything: the month and year are the ones the week mostly falls in (its Thursday-ish middle day).
+  const anchor = weekStart ? addDays(weekStart, 3) : null
+  const { range, label } = useMemo(() => {
+    if (!weekStart || !anchor) return { range: null, label: '' }
+    if (view === 'Week') return { range: [weekStart, addDays(weekStart, 6)] as [string, string], label: weekLabel(weekStart) }
+    if (view === 'Month') return { range: monthRange(anchor), label: `${MONTH[Number(anchor.slice(5, 7)) - 1]} ${anchor.slice(0, 4)}` }
+    return { range: yearRange(anchor), label: anchor.slice(0, 4) }
+  }, [weekStart, anchor, view])
+
+  const sum = useMemo(
+    () => (data && range && weekStartsOn !== null ? summarizePeriod({ from: range[0], to: range[1], weekStartsOn, ...data }) : null),
+    [data, range, weekStartsOn],
+  )
+
+  const iconBtn = 'grid size-11 place-items-center rounded-full text-2xl'
   return (
     <Screen title="Summary" back="/">
-      {periods?.map((p) => (
-        <section key={p.title} aria-label={p.title} className="mt-6">
-          <h2 className="text-xs font-medium uppercase tracking-wide text-muted">
-            {p.title} <span className="normal-case tracking-normal">· {p.range}</span>
-          </h2>
-          <p className="mt-1 text-4xl font-semibold tabular-nums tracking-tight">{formatUSD(p.sum.totalCents)}</p>
-          <dl className="mt-2 divide-y divide-border overflow-hidden rounded-2xl bg-surface">
+      {weekStart && sum && (
+        <>
+          <nav aria-label="Week" className="mt-2 flex items-center justify-between">
+            <button type="button" aria-label="Previous week" className={iconBtn} onClick={() => setWeekStart(addDays(weekStart, -7))}>
+              ‹
+            </button>
+            <span className="text-base font-medium">{weekLabel(weekStart)}</span>
+            <button type="button" aria-label="Next week" className={iconBtn} onClick={() => setWeekStart(addDays(weekStart, 7))}>
+              ›
+            </button>
+          </nav>
+
+          <div role="group" aria-label="Show" className="mt-4 grid grid-cols-3 gap-1 rounded-xl bg-surface p-1">
+            {VIEWS.map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={view === v}
+                onClick={() => setView(v)}
+                className={`min-h-10 rounded-lg text-sm font-medium ${view === v ? 'bg-accent text-accent-fg' : 'text-muted'}`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+
+          <section aria-label="Totals" className="mt-8 text-center">
+            <p className="text-sm text-muted">{label}</p>
+            <p className="mt-1 text-6xl font-semibold tabular-nums tracking-tight">{formatUSD(sum.totalCents)}</p>
+          </section>
+          <dl className="mt-6 divide-y divide-border overflow-hidden rounded-2xl bg-surface">
             {(
               [
-                ['Hours', `${formatHours(p.sum.minutes)} h`],
-                ['Overtime', `${formatHours(p.sum.overtimeMinutes)} h`],
-                ['Earnings', formatUSD(p.sum.earnedCents)],
-                ['Expenses', formatUSD(p.sum.expensesCents)],
+                ['Hours', `${formatHours(sum.minutes)} h`],
+                ['Overtime', `${formatHours(sum.overtimeMinutes)} h`],
+                ['Earnings', formatUSD(sum.earnedCents)],
+                ['Expenses', formatUSD(sum.expensesCents)],
               ] as const
             ).map(([k, v]) => (
-              <div key={k} className="flex items-baseline justify-between px-3 py-2.5 text-sm">
+              <div key={k} className="flex items-baseline justify-between px-4 py-3 text-base">
                 <dt className="text-muted">{k}</dt>
                 <dd className="tabular-nums">{v}</dd>
               </div>
             ))}
           </dl>
-        </section>
-      ))}
+        </>
+      )}
     </Screen>
   )
 }
