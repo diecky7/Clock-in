@@ -10,6 +10,8 @@
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
   --color-danger: var(--danger);
+  --color-title: var(--title-bg);
+  --color-title-fg: var(--title-fg);
 }
 
 html,

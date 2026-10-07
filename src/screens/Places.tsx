@@ -18,7 +18,7 @@ function Group({ title, rows }: { title: string; rows: Row[] }) {
   if (shown.length === 0) return null
   return (
     <section aria-label={title} className="mt-4 overflow-hidden rounded-b-2xl rounded-t-md bg-bg">
-      <h2 className="bg-fg px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-bg">{title}</h2>
+      <h2 className="bg-title px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-title-fg">{title}</h2>
       <dl className="divide-y divide-border">
         {shown.map(([k, v]) => (
           <div key={k} className="flex items-baseline justify-between gap-4 px-3 py-2.5 text-sm">
@@ -129,7 +129,7 @@ function DirectionsDialog({ place: saved, employers, onClose }: { place: Place; 
               ]}
             />
             <section aria-label="Employers" className="mt-4 overflow-hidden rounded-b-2xl rounded-t-md bg-bg">
-              <h2 className="bg-fg px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-bg">Employers</h2>
+              <h2 className="bg-title px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-title-fg">Employers</h2>
               <div className="divide-y divide-border">
                 {history.byEmployer.map((v) => (
                   <details key={v.employerId} className="group">

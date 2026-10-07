@@ -8,6 +8,8 @@
   --accent: #09090b;
   --accent-fg: #ffffff;
   --danger: #c4251c;
+  --title-bg: #3f3f46;
+  --title-fg: #f4f4f5;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -20,5 +22,7 @@
     --accent: #fafafa;
     --accent-fg: #09090b;
     --danger: #ff6b61;
+    --title-bg: #34343a;
+    --title-fg: #d4d4d8;
   }
 }
