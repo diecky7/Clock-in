@@ -4,7 +4,9 @@ import PhotoPicker from '../components/PhotoPicker'
 import { Field, PrimaryButton, Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
 import { activeEmployers } from '../domain/employers'
-import { formatUSD, parseUSD } from '../domain/money'
+import DateTimeField from '../components/DateTimeField'
+import MoneyInput from '../components/MoneyInput'
+import { formatUSD } from '../domain/money'
 import { today } from '../domain/today'
 import type { Employer, Expense } from '../domain/types'
 import { navigate } from '../router'
@@ -20,7 +22,7 @@ export default function ExpenseForm({ id, initialDate }: { id?: string; initialD
 
   const [employerId, setEmployerId] = useState('')
   const [description, setDescription] = useState('')
-  const [amount, setAmount] = useState('')
+  const [cents, setCents] = useState<number | null>(null)
   const [date, setDate] = useState(initialDate ?? today())
   const [photoIds, setPhotoIds] = useState<string[]>([])
   const [error, setError] = useState<{ amount?: string; date?: string }>({})
@@ -49,7 +51,7 @@ export default function ExpenseForm({ id, initialDate }: { id?: string; initialD
       if (x) {
         setEmployerId(x.employerId)
         setDescription(x.description === 'Expense' ? '' : x.description)
-        setAmount((x.amountCents / 100).toFixed(2))
+        setCents(x.amountCents)
         setDate(x.date)
         setPhotoIds(x.photoIds)
       } else {
@@ -75,7 +77,6 @@ export default function ExpenseForm({ id, initialDate }: { id?: string; initialD
     setPhotoIds(ids)
   }
 
-  const cents = parseUSD(amount)
   const saveLabel = cents === null ? 'Save' : `Save · ${formatUSD(cents)}`
 
   async function save() {
@@ -147,19 +148,10 @@ export default function ExpenseForm({ id, initialDate }: { id?: string; initialD
       </Field>
 
       <Field label="Amount" htmlFor="x-amount" error={error.amount}>
-        <input
-          id="x-amount"
-          className={inputCls}
-          inputMode="decimal"
-          placeholder="$0.00"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
+        <MoneyInput id="x-amount" cents={cents} onChange={setCents} />
       </Field>
 
-      <Field label="Date" htmlFor="x-date" error={error.date}>
-        <input id="x-date" type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
-      </Field>
+      <DateTimeField type="date" label="Date" value={date} onChange={setDate} error={error.date} />
 
       <div className="mt-6">
         <span className="mb-2 block text-sm text-muted">Receipt (up to 3 photos)</span>

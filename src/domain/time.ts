@@ -33,6 +33,22 @@ export function formatDateTime(s: string): string {
   return `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()} · ${h12}:${mm} ${h < 12 ? 'AM' : 'PM'}`
 }
 
+/** 'YYYY-MM-DD' -> 'Tue, Oct 6, 2026'. */
+export function formatDay(s: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  if (!m) return s
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  return `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
+}
+
+/** 'HH:MM' -> '7:00 AM'. */
+export function formatClock(s: string): string {
+  const m = /^(\d{2}):(\d{2})$/.exec(s)
+  if (!m) return s
+  const h = Number(m[1])
+  return `${h % 12 === 0 ? 12 : h % 12}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`
+}
+
 /** 'YYYY-MM-DD' -> 'MM/DD/YYYY' (US format); anything else is returned unchanged. */
 export function formatDate(s: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)

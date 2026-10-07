@@ -351,7 +351,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
           </Suspense>
         </div>
         {place && (
-          <div className="mt-2 flex items-start justify-between gap-3">
+          <div className="mt-2 flex items-center justify-between gap-3">
             <p data-testid="chosen-place" className="text-sm">
               {shortAddress(place.label)}
             </p>

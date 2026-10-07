@@ -103,7 +103,7 @@ describe('ExpenseForm', () => {
     await repo.saveExpense({ id: 'x1', employerId: 'e1', date: '2026-10-06', description: 'Tape', amountCents: 899, photoIds: [p1, p2] })
     await setup('x1')
     expect(await screen.findByDisplayValue('Tape')).toBeInTheDocument()
-    expect(screen.getByLabelText('Amount')).toHaveValue('8.99')
+    expect(screen.getByLabelText('Amount')).toHaveValue('$8.99')
     expect(screen.getByLabelText('Date')).toHaveValue('2026-10-06')
     await user.click(screen.getByRole('button', { name: 'Remove photo 1' }))
     await user.click(screen.getByRole('button', { name: /^Save/ }))
