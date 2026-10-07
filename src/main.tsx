@@ -11,3 +11,8 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 )
+
+// Quietly fix wrong ZIPs saved before they were checked (needs a connection the first time).
+setTimeout(() => {
+  void import('./data/repo').then((repo) => repo.repairZips()).catch(() => undefined)
+}, 3000)

@@ -1,4 +1,5 @@
 import type { Place, PlaceDetail } from '../domain/types'
+import { safeFixZip } from './zip'
 import { formatParts, shortAddress, zip5 } from './address'
 
 const PHOTON = 'https://photon.komoot.io/api/'
@@ -64,7 +65,7 @@ export async function searchAddress(q: string, signal?: AbortSignal): Promise<Pl
   const data = (await res.json()) as {
     features?: { geometry: { coordinates: [number, number] }; properties: Parts }[]
   }
-  return (data.features ?? [])
+  const places = (data.features ?? [])
     .map((f) => ({
       lat: f.geometry.coordinates[1],
       lon: f.geometry.coordinates[0],
@@ -72,6 +73,7 @@ export async function searchAddress(q: string, signal?: AbortSignal): Promise<Pl
       detail: buildDetail(f.properties),
     }))
     .filter((p) => p.label)
+  return Promise.all(places.map(safeFixZip))
 }
 
 export async function reverseGeocode(lat: number, lon: number): Promise<Place> {
@@ -85,12 +87,12 @@ export async function reverseGeocode(lat: number, lon: number): Promise<Place> {
   const data = (await res.json()) as { display_name?: string; address?: Parts; name?: string; type?: string }
   const structured = data.address ? buildLabel(data.address) : ''
   const detail = data.address ? buildDetail({ ...data.address, name: data.address.name ?? data.name }, data.type) : {}
-  return {
+  return safeFixZip({
     lat,
     lon,
     label: structured || (data.display_name && shortAddress(data.display_name)) || `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
     ...(Object.keys(detail).length ? { detail } : {}),
-  }
+  })
 }
 
 export function getCurrentPosition(): Promise<{ lat: number; lon: number; accuracyM: number }> {
