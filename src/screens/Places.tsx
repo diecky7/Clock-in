@@ -17,9 +17,9 @@ function Group({ title, rows }: { title: string; rows: Row[] }) {
   const shown = rows.filter((r): r is [string, string] => Boolean(r[1]))
   if (shown.length === 0) return null
   return (
-    <section aria-label={title}>
-      <h2 className="mb-1 mt-4 px-3 text-xs font-medium uppercase tracking-wide text-muted">{title}</h2>
-      <dl className="divide-y divide-border overflow-hidden rounded-2xl bg-bg">
+    <section aria-label={title} className="mt-4 overflow-hidden rounded-2xl bg-bg">
+      <h2 className="bg-fg px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-bg">{title}</h2>
+      <dl className="divide-y divide-border">
         {shown.map(([k, v]) => (
           <div key={k} className="flex items-baseline justify-between gap-4 px-3 py-2.5 text-sm">
             <dt className="shrink-0 text-muted">{k}</dt>
@@ -128,9 +128,9 @@ function DirectionsDialog({ place: saved, employers, onClose }: { place: Place; 
                 ['Last time', history.last ? formatDate(history.last) : undefined],
               ]}
             />
-            <section aria-label="Employers">
-              <h2 className="mb-1 mt-4 px-3 text-xs font-medium uppercase tracking-wide text-muted">Employers</h2>
-              <div className="divide-y divide-border overflow-hidden rounded-2xl bg-bg">
+            <section aria-label="Employers" className="mt-4 overflow-hidden rounded-2xl bg-bg">
+              <h2 className="bg-fg px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-bg">Employers</h2>
+              <div className="divide-y divide-border">
                 {history.byEmployer.map((v) => (
                   <details key={v.employerId} className="group">
                     <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
