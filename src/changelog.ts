@@ -7,21 +7,28 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
-    version: '1.1.0',
+    version: '1.2.0',
     date: '2026-10-08',
     changes: [
       'Swipe left or right (30% of the screen) to change week, with a slide animation',
       'Newest entries first on the home screen',
       'New entries and expenses start on the employer you used last',
-      'Summary screen: week, month and year totals',
       'Refresh button, version number and this changelog',
     ],
   },
   {
-    version: '1.0.0',
+    version: '1.1.0',
     date: '2026-10-07',
     changes: [
       'Small menu on the + button',
+      'Summary screen: week, month and year totals',
+      'Card titles in a band, larger titles and even spacing on every screen',
+    ],
+  },
+  {
+    version: '1.0.0',
+    date: '2026-10-06',
+    changes: [
       'Addresses: short USPS style in lists, full in the address box, ZIP codes verified, copy buttons',
       'Directions to Apple Maps, Google Maps or Waze from any saved address',
       'Ask which address to use when you start near a saved one',
