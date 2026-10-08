@@ -70,12 +70,40 @@ describe('Home', () => {
     expect(within(list).getByText('$175.50')).toBeInTheDocument()
   })
 
+  it('lists the most recent first', async () => {
+    await seed(false)
+    render(<Home initialDate="2026-10-07" />)
+    const list = await screen.findByRole('list', { name: 'This week' })
+    const days = within(list).getAllByRole('listitem').map((li) => li.textContent?.match(/^\w+ \d+/)?.[0])
+    expect(days).toEqual(['Fri 9', 'Thu 8', 'Wed 7', 'Tue 6', 'Mon 5'])
+  })
+
+  it('dragging more than 30% of the width changes the week; less springs back', async () => {
+    await seed()
+    render(<Home initialDate="2026-10-07" />)
+    const list = await screen.findByRole('list', { name: 'This week' })
+    const zone = list.closest('div')!.parentElement as HTMLElement
+    const drag = (from: number, to: number) => {
+      fireEvent.pointerDown(zone, { pointerId: 1, isPrimary: true, clientX: from, clientY: 300 })
+      fireEvent.pointerMove(zone, { pointerId: 1, isPrimary: true, clientX: to, clientY: 300 })
+      fireEvent.pointerUp(zone, { pointerId: 1, isPrimary: true, clientX: to, clientY: 300 })
+    }
+    drag(300, 150) // 150 px of a 1024 px page: not enough
+    await new Promise((r) => setTimeout(r, 300))
+    expect(screen.getByText('Oct 4 – 10')).toBeInTheDocument()
+    drag(800, 300) // left, far enough: next week
+    expect(await screen.findByText('Oct 11 – 17')).toBeInTheDocument()
+    await new Promise((r) => setTimeout(r, 500))
+    drag(100, 700) // right: back
+    expect(await screen.findByText('Oct 4 – 10')).toBeInTheDocument()
+  })
+
   it('holding a row opens Edit/Delete; Delete asks to confirm and removes the row', async () => {
     await seed(false)
     const user = userEvent.setup()
     render(<Home initialDate="2026-10-07" />)
     const list = await screen.findByRole('list', { name: 'This week' })
-    const row = within(list).getAllByRole('button')[0]
+    const row = within(list).getAllByRole('button').at(-1)!
     fireEvent.pointerDown(row)
     await new Promise((r) => setTimeout(r, 560))
     expect(await screen.findByRole('button', { name: 'Edit' })).toBeInTheDocument()
@@ -101,7 +129,7 @@ describe('Home', () => {
     await seed(false)
     const user = userEvent.setup()
     render(<Home initialDate="2026-10-07" />)
-    const row = within(await screen.findByRole('list', { name: 'This week' })).getAllByRole('button')[0]
+    const row = within(await screen.findByRole('list', { name: 'This week' })).getAllByRole('button').at(-1)!
     fireEvent.pointerDown(row)
     await new Promise((r) => setTimeout(r, 560))
     await user.click(await screen.findByRole('button', { name: 'Edit' }))

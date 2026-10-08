@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChartIcon, GearIcon, PinIcon, PlusIcon, ReceiptIcon, ShareIcon } from '../components/icons'
 import { LongPressMenu, useLongPress, type MenuTarget } from '../components/LongPressMenu'
 import PersistenceNote from '../components/PersistenceNote'
+import { useWeekSwipe } from '../components/useWeekSwipe'
 import NewChoiceSheet from '../components/NewChoiceSheet'
 import * as repo from '../data/repo'
 import { formatUSD } from '../domain/money'
@@ -102,6 +103,8 @@ export default function Home({ initialDate }: { initialDate?: string }) {
     }
   }, [weekStart, load])
 
+  const swipe = useWeekSwipe((dir) => setWeekStart((w) => (w ? addDays(w, dir * 7) : w)))
+
   const summary = useMemo(
     () => (weekStart ? computeWeek({ weekStart, entries, expenses, employers }) : null),
     [weekStart, entries, expenses, employers],
@@ -127,7 +130,8 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         amount: formatUSD(x.amountCents),
       })),
     ]
-    return list.sort((a, b) => a.sort.localeCompare(b.sort))
+    // Most recent first.
+    return list.sort((a, b) => b.sort.localeCompare(a.sort))
   }, [entries, expenses, employers])
 
   if (!weekStart || !summary) return <main aria-label="Time clock" />
@@ -156,7 +160,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
   const iconBtn = 'grid size-11 place-items-center rounded-full'
 
   return (
-    <main aria-label="Time clock" className="mx-auto min-h-dvh max-w-md px-4 pb-28">
+    <main aria-label="Time clock" className="mx-auto min-h-dvh max-w-md overflow-x-clip px-4 pb-28">
       <h1 className="sr-only">Time clock</h1>
       <header className="flex min-h-14 items-center justify-between">
         <button type="button" aria-label="Settings" className={iconBtn} onClick={() => navigate('/settings')}>
@@ -176,6 +180,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
       </header>
       <PersistenceNote />
 
+      <div {...swipe.bind} style={swipe.style} className="min-h-[60dvh]">
       <nav aria-label="Week" className="mt-2 flex items-center justify-between">
         <button type="button" aria-label="Previous week" className={`${iconBtn} text-2xl`} onClick={() => setWeekStart(addDays(weekStart, -7))}>
           ‹
@@ -209,6 +214,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
             ))}
           </ul>
         )}
+      </div>
       </div>
 
       <button
