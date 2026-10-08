@@ -27,6 +27,19 @@ async function setup(id?: string) {
 }
 
 describe('ExpenseForm', () => {
+  it('starts on the employer used last, and saving remembers the choice', async () => {
+    await repo.saveEmployer(acme)
+    await repo.saveEmployer({ ...acme, id: 'e2', name: 'Bay' })
+    await repo.rememberEmployer('e2')
+    const user = userEvent.setup()
+    render(<ExpenseForm initialDate="2026-10-07" />)
+    expect(await screen.findByRole('radio', { name: 'Bay' })).toBeChecked()
+    await user.click(screen.getByRole('radio', { name: 'Acme' }))
+    await user.type(screen.getByLabelText('Amount'), '500')
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    await waitFor(async () => expect((await repo.getSettings()).lastEmployerId).toBe('e1'))
+  })
+
   it('requires an amount', async () => {
     const user = userEvent.setup()
     await setup()

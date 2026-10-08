@@ -96,6 +96,10 @@ export async function getSettings(): Promise<Settings> {
   const s = await (await getDb()).get(STORE_SETTINGS, SETTINGS_KEY)
   return s ?? defaultSettings()
 }
+export async function rememberEmployer(id: string): Promise<void> {
+  const s = await getSettings()
+  if (s.lastEmployerId !== id) await saveSettings({ ...s, lastEmployerId: id })
+}
 export async function saveSettings(s: Settings): Promise<void> {
   await (await getDb()).put(STORE_SETTINGS, s, SETTINGS_KEY)
 }

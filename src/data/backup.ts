@@ -82,7 +82,8 @@ const validSettings = (r: unknown): r is Settings =>
   isNum(r.weekStartsOn) && Number.isInteger(r.weekStartsOn) && r.weekStartsOn >= 0 && r.weekStartsOn <= 6 &&
   isArr(r.schedule) && r.schedule.length === 7 && r.schedule.every(validDay) &&
   isArr(r.recentPlaces) && r.recentPlaces.every(validPlace) &&
-  (r.nearbyFeet === undefined || (isNum(r.nearbyFeet) && r.nearbyFeet >= 0))
+  (r.nearbyFeet === undefined || (isNum(r.nearbyFeet) && r.nearbyFeet >= 0)) &&
+  (r.lastEmployerId === undefined || isStr(r.lastEmployerId))
 const validPhoto = (r: unknown): r is PhotoJson =>
   isObj(r) && isStr(r.id) && isStr(r.type) && isStr(r.data)
 

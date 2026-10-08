@@ -3,7 +3,7 @@ import EmployerPicker from '../components/EmployerPicker'
 import PhotoPicker from '../components/PhotoPicker'
 import { Field, PrimaryButton, Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
-import { activeEmployers } from '../domain/employers'
+import { defaultEmployerId } from '../domain/employers'
 import DateTimeField from '../components/DateTimeField'
 import MoneyInput from '../components/MoneyInput'
 import { formatUSD } from '../domain/money'
@@ -38,7 +38,7 @@ export default function ExpenseForm({ id, initialDate }: { id?: string; initialD
   useEffect(() => {
     let alive = true
     void (async () => {
-      const all = await repo.listEmployers()
+      const [all, s] = await Promise.all([repo.listEmployers(), repo.getSettings()])
       const x = editing ? ((await repo.getExpense(id)) ?? null) : null
       if (!alive) return
       if (editing && !x) {
@@ -55,7 +55,7 @@ export default function ExpenseForm({ id, initialDate }: { id?: string; initialD
         setDate(x.date)
         setPhotoIds(x.photoIds)
       } else {
-        setEmployerId(activeEmployers(all)[0]?.id ?? '')
+        setEmployerId(defaultEmployerId(all, s.lastEmployerId))
       }
       setReady(true)
     })()
@@ -98,6 +98,7 @@ export default function ExpenseForm({ id, initialDate }: { id?: string; initialD
     }
     try {
       await repo.saveExpense(expense)
+      await repo.rememberEmployer(employerId)
       saved.current = true
       // Photos taken out are deleted: both ones the expense already had and ones added then removed in this session.
       const dropped = new Set([...(existing?.photoIds ?? []), ...added.current])

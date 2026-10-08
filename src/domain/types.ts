@@ -46,4 +46,6 @@ export interface Settings {
   recentPlaces: Place[]
   /** Ask which address to use when a new entry starts this close to a saved one. 0 = off, default 500. */
   nearbyFeet?: number
+  /** Employer of the last saved entry or expense; pre-selected for the next one. */
+  lastEmployerId?: string
 }
