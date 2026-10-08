@@ -162,7 +162,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
   const iconBtn = 'grid size-11 place-items-center rounded-full'
 
   return (
-    <main aria-label="Time clock" className="mx-auto min-h-dvh max-w-md overflow-x-clip px-4 pb-28">
+    <main aria-label="Time clock" className="relative mx-auto min-h-dvh max-w-md overflow-x-clip px-4 pb-28">
       <h1 className="sr-only">Time clock</h1>
       <header className="flex min-h-14 items-center justify-between">
         <div className="flex">

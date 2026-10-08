@@ -6,7 +6,7 @@ export const inputCls =
 
 export function Screen({ title, back, children }: { title: string; back?: string; children: ReactNode }) {
   return (
-    <main aria-label={title} className="mx-auto min-h-dvh max-w-md px-4 pb-16">
+    <main aria-label={title} className="relative mx-auto min-h-dvh max-w-md px-4 pb-16">
       <header className="flex min-h-14 items-center gap-2">
         {back && (
           <button
