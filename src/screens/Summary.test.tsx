@@ -11,19 +11,21 @@ beforeEach(async () => {
 })
 
 describe('Summary', () => {
-  it('shows one total; the Week/Month/Year filter widens it and the week arrows move it', async () => {
+  it('has a card per figure with weekly, monthly and yearly rows; the week arrows move them', async () => {
     const d = today()
     await repo.saveEmployer({ id: 'e', name: 'A', overtimeEnabled: false, archived: false, rates: [{ from: '2000-01-01', cents: 2000 }] })
     await repo.saveEntry({ id: 't', employerId: 'e', start: `${d}T08:00`, end: `${d}T16:00`, breakMin: 0, rateCents: 2000 })
     const user = userEvent.setup()
     render(<Summary />)
-    const totals = async () => within(await screen.findByRole('region', { name: 'Totals' }))
-    expect((await totals()).getByText('$160.00')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Year' }))
-    expect((await totals()).getByText('$160.00')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Week' }))
+    const total = within(await screen.findByRole('region', { name: 'Total' }))
+    expect(total.getByText('Weekly')).toBeInTheDocument()
+    expect(total.getByText(/Monthly/)).toBeInTheDocument()
+    expect(total.getByText(/Yearly/)).toBeInTheDocument()
+    expect(total.getAllByText('$160.00')).toHaveLength(3)
+    for (const name of ['Hours', 'Overtime', 'Earnings', 'Expenses']) expect(screen.getByRole('region', { name })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Next week' }))
-    expect((await totals()).getByText('$0.00')).toBeInTheDocument()
+    // The empty week reads $0.00 (the month and year may or may not change, depending on today's date).
+    await waitFor(() => expect(total.getByText('Weekly').parentElement).toHaveTextContent('$0.00'))
   })
 
   it('dragging across more than half the screen changes the week', async () => {
