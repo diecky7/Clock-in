@@ -36,10 +36,10 @@ export function Screen({
   )
 }
 
-export function Section({ title, children }: { title: string; children: ReactNode }) {
+export function Section({ title, compact, children }: { title: string; compact?: boolean; children: ReactNode }) {
   return (
-    <section className="mt-6 overflow-hidden rounded-b-2xl rounded-t-md bg-surface" aria-label={title}>
-      <h2 className="bg-title px-4 py-3 text-lg font-semibold text-title-fg">{title}</h2>
+    <section className={`${compact ? 'mt-3' : 'mt-6'} overflow-hidden rounded-b-2xl rounded-t-md bg-surface`} aria-label={title}>
+      <h2 className={`bg-title px-4 font-semibold text-title-fg ${compact ? 'py-1.5 text-base' : 'py-3 text-lg'}`}>{title}</h2>
       <div>{children}</div>
     </section>
   )

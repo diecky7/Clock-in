@@ -7,6 +7,11 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.3.1',
+    date: '2026-10-08',
+    changes: ['Summary is more compact and fits on one screen'],
+  },
+  {
     version: '1.3.0',
     date: '2026-10-08',
     changes: ['Summary: one card per figure (total, hours, overtime, earnings, expenses) with weekly, monthly and yearly rows'],

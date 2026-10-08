@@ -62,7 +62,7 @@ export default function Summary() {
     <Screen title="Summary" back="/" swipe={swipe}>
       {weekStart && periods && (
         <>
-          <nav aria-label="Week" className="mt-2 flex items-center justify-between">
+          <nav aria-label="Week" className="flex items-center justify-between">
             <button type="button" aria-label="Previous week" className={iconBtn} onClick={() => setWeekStart(addDays(weekStart, -7))}>
               ‹
             </button>
@@ -73,10 +73,10 @@ export default function Summary() {
           </nav>
 
           {cards.map(([title, fmt]) => (
-            <Section key={title} title={title}>
+            <Section key={title} title={title} compact>
               <dl className="divide-y divide-border">
                 {periods.map((p) => (
-                  <div key={p.name} className="flex min-h-14 items-center justify-between gap-3 px-4 text-base">
+                  <div key={p.name} className="flex min-h-9 items-center justify-between gap-3 px-4 text-base">
                     <dt>
                       {p.name}
                       {p.note && <span className="text-muted"> · {p.note}</span>}
