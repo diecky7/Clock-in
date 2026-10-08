@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { resetDbForTests } from '../data/db'
@@ -24,5 +24,15 @@ describe('Summary', () => {
     await user.click(screen.getByRole('button', { name: 'Week' }))
     await user.click(screen.getByRole('button', { name: 'Next week' }))
     expect((await totals()).getByText('$0.00')).toBeInTheDocument()
+  })
+
+  it('dragging across more than half the screen changes the week', async () => {
+    render(<Summary />)
+    const start = (await screen.findByRole('navigation', { name: 'Week' })).textContent
+    const zone = screen.getByRole('main', { name: 'Summary' })
+    fireEvent.pointerDown(zone, { pointerId: 1, isPrimary: true, clientX: 1000, clientY: 300 })
+    fireEvent.pointerMove(zone, { pointerId: 1, isPrimary: true, clientX: 200, clientY: 300 })
+    fireEvent.pointerUp(zone, { pointerId: 1, isPrimary: true, clientX: 200, clientY: 300 })
+    await waitFor(() => expect(screen.getByRole('navigation', { name: 'Week' }).textContent).not.toBe(start))
   })
 })

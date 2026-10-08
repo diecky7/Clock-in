@@ -1,12 +1,23 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, CSSProperties, HTMLAttributes, ReactNode } from 'react'
 import { navigate } from '../router'
 
 export const inputCls =
   'min-h-12 w-full min-w-0 rounded-xl border border-border bg-surface px-3 text-base text-fg placeholder:text-muted'
 
-export function Screen({ title, back, children }: { title: string; back?: string; children: ReactNode }) {
+export function Screen({
+  title,
+  back,
+  swipe,
+  children,
+}: {
+  title: string
+  back?: string
+  /** Horizontal-drag behaviour (see useWeekSwipe): handlers go on the whole screen, the motion on the content. */
+  swipe?: { bind: HTMLAttributes<HTMLElement>; style: CSSProperties }
+  children: ReactNode
+}) {
   return (
-    <main aria-label={title} className="relative mx-auto min-h-dvh max-w-md px-4 pb-16">
+    <main aria-label={title} {...swipe?.bind} className="relative mx-auto min-h-dvh max-w-md px-4 pb-16">
       <header className="flex min-h-14 items-center gap-2">
         {back && (
           <button
@@ -20,7 +31,7 @@ export function Screen({ title, back, children }: { title: string; back?: string
         )}
         <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
       </header>
-      {children}
+      <div style={swipe?.style}>{children}</div>
     </main>
   )
 }

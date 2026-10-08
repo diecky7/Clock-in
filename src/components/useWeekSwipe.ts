@@ -1,14 +1,14 @@
 import { useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent } from 'react'
 
-/** Share of the page width a drag must cover before it changes the week. */
-export const SWIPE_THRESHOLD = 0.3
+/** Share of the screen width a drag must cover before it changes the week. */
+export const SWIPE_THRESHOLD = 0.5
 const OUT_MS = 180
 const IN_MS = 260
 
 const reduceMotion = () => typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /**
- * Horizontal drag to change week. The content follows the finger; past 30% of the width it slides out,
+ * Horizontal drag to change week. The content follows the finger; past half of the width it slides out,
  * the next (drag left) or previous (drag right) week slides in from the other side. Shorter drags spring back.
  */
 export function useWeekSwipe(onChange: (dir: -1 | 1) => void) {
@@ -58,6 +58,8 @@ export function useWeekSwipe(onChange: (dir: -1 | 1) => void) {
   }
 
   const bind = {
+    // On the whole screen, so a touch that starts at an edge or in the margins is ours too (vertical scroll stays native).
+    style: { touchAction: 'pan-y', userSelect: 'none', WebkitUserSelect: 'none' } as CSSProperties,
     onPointerDown: (e: PointerEvent<HTMLElement>) => {
       if (busy || !e.isPrimary) return
       start.current = { x: e.clientX, y: e.clientY }
@@ -96,7 +98,6 @@ export function useWeekSwipe(onChange: (dir: -1 | 1) => void) {
   }
 
   const style: CSSProperties = {
-    touchAction: 'pan-y',
     transform: dx === 0 && transition === 'none' ? undefined : `translate3d(${dx}px,0,0)`,
     opacity: 1 - Math.min(1, Math.abs(dx) / (window.innerWidth || 1)) * 0.6,
     transition,

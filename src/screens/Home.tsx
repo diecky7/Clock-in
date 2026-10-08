@@ -162,7 +162,8 @@ export default function Home({ initialDate }: { initialDate?: string }) {
   const iconBtn = 'grid size-11 place-items-center rounded-full'
 
   return (
-    <main aria-label="Time clock" className="relative mx-auto min-h-dvh max-w-md overflow-x-clip px-4 pb-28">
+    <main aria-label="Time clock" {...swipe.bind}
+      className="relative mx-auto min-h-dvh max-w-md overflow-x-clip px-4 pb-28">
       <h1 className="sr-only">Time clock</h1>
       <header className="flex min-h-14 items-center justify-between">
         <div className="flex">
@@ -187,7 +188,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
       </header>
       <PersistenceNote />
 
-      <div {...swipe.bind} style={swipe.style} className="min-h-[60dvh]">
+      <div style={swipe.style} className="min-h-[60dvh]">
       <nav aria-label="Week" className="mt-2 flex items-center justify-between">
         <button type="button" aria-label="Previous week" className={`${iconBtn} text-2xl`} onClick={() => setWeekStart(addDays(weekStart, -7))}>
           ‹
