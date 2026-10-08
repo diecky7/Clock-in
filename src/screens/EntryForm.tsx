@@ -3,7 +3,7 @@ import DateTimeField from '../components/DateTimeField'
 import EmployerPicker from '../components/EmployerPicker'
 import { Field, PrimaryButton, Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
-import { activeEmployers } from '../domain/employers'
+import { defaultEmployerId } from '../domain/employers'
 import { rateOn } from '../domain/rates'
 import { formatHours, shiftMinutes, validateShift } from '../domain/time'
 import { today } from '../domain/today'
@@ -86,7 +86,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
         setOutTouched(true)
       } else {
         const d = defaultsFor(initialDate ?? today(), s)
-        setEmployerId(activeEmployers(all)[0]?.id ?? '')
+        setEmployerId(defaultEmployerId(all, s.lastEmployerId))
         setStart(d.start)
         setEnd(d.end)
         setBreakText(String(d.breakMin))
@@ -214,6 +214,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
     }
     try {
       await repo.saveEntry(entry)
+      await repo.rememberEmployer(employerId)
       if (place) await repo.addRecentPlace(place).catch(() => undefined)
       navigate('/')
     } catch {
