@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChartIcon, GearIcon, PinIcon, PlusIcon, ReceiptIcon, ShareIcon } from '../components/icons'
+import { ChartIcon, GearIcon, RefreshIcon, PinIcon, PlusIcon, ReceiptIcon, ShareIcon } from '../components/icons'
 import { LongPressMenu, useLongPress, type MenuTarget } from '../components/LongPressMenu'
+import VersionFooter from '../components/VersionFooter'
+import { updateApp } from '../pwa-update'
 import PersistenceNote from '../components/PersistenceNote'
 import { useWeekSwipe } from '../components/useWeekSwipe'
 import NewChoiceSheet from '../components/NewChoiceSheet'
@@ -163,9 +165,14 @@ export default function Home({ initialDate }: { initialDate?: string }) {
     <main aria-label="Time clock" className="mx-auto min-h-dvh max-w-md overflow-x-clip px-4 pb-28">
       <h1 className="sr-only">Time clock</h1>
       <header className="flex min-h-14 items-center justify-between">
-        <button type="button" aria-label="Settings" className={iconBtn} onClick={() => navigate('/settings')}>
-          <GearIcon />
-        </button>
+        <div className="flex">
+          <button type="button" aria-label="Settings" className={iconBtn} onClick={() => navigate('/settings')}>
+            <GearIcon />
+          </button>
+          <button type="button" aria-label="Update app" className={`${iconBtn} text-muted`} onClick={() => void updateApp()}>
+            <RefreshIcon />
+          </button>
+        </div>
         <div className="flex">
           <button type="button" aria-label="Summary" className={iconBtn} onClick={() => navigate('/summary')}>
             <ChartIcon />
@@ -216,6 +223,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         )}
       </div>
       </div>
+      <VersionFooter />
 
       <button
         type="button"

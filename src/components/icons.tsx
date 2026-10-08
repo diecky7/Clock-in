@@ -88,3 +88,10 @@ export const ChartIcon = () => (
     <path d="M8 16v-4M12 16V8M16 16v-6" />
   </svg>
 )
+
+export const RefreshIcon = () => (
+  <svg {...base}>
+    <path d="M20 12a8 8 0 1 1-2.3-5.7" />
+    <path d="M20 4v5h-5" />
+  </svg>
+)
