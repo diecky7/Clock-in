@@ -1,4 +1,6 @@
 import Modal from '../components/Modal'
+import VersionFooter from '../components/VersionFooter'
+import { CHANGELOG } from '../changelog'
 import PersistenceNote from '../components/PersistenceNote'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BackupError, exportBackup, importBackup } from '../data/backup'
@@ -196,6 +198,24 @@ export default function Settings() {
             </button>
         </Modal>
       )}
+      <Section title="What's new">
+        {CHANGELOG.map((r, i) => (
+          <details key={r.version} open={i === 0} className={`group ${divider}`}>
+            <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 text-base [&::-webkit-details-marker]:hidden">
+              <span>
+                v{r.version} <span className="text-muted">· {r.date}</span>
+              </span>
+              <span aria-hidden className="text-muted transition-transform group-open:rotate-90">›</span>
+            </summary>
+            <ul className="list-disc space-y-1.5 pb-4 pl-10 pr-4 text-base text-muted">
+              {r.changes.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
+            </ul>
+          </details>
+        ))}
+      </Section>
+      <VersionFooter />
     </Screen>
   )
 }
