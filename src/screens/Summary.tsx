@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Screen } from '../components/ui'
+import { useWeekSwipe } from '../components/useWeekSwipe'
 import * as repo from '../data/repo'
 import { formatUSD } from '../domain/money'
 import { formatHours } from '../domain/time'
@@ -51,9 +52,10 @@ export default function Summary() {
     [data, range, weekStartsOn],
   )
 
+  const swipe = useWeekSwipe((dir) => setWeekStart((w) => (w ? addDays(w, dir * 7) : w)))
   const iconBtn = 'grid size-11 place-items-center rounded-full text-2xl'
   return (
-    <Screen title="Summary" back="/">
+    <Screen title="Summary" back="/" swipe={swipe}>
       {weekStart && sum && (
         <>
           <nav aria-label="Week" className="mt-2 flex items-center justify-between">

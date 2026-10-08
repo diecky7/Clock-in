@@ -78,23 +78,23 @@ describe('Home', () => {
     expect(days).toEqual(['Fri 9', 'Thu 8', 'Wed 7', 'Tue 6', 'Mon 5'])
   })
 
-  it('dragging more than 30% of the width changes the week; less springs back', async () => {
+  it('dragging more than half of the screen width changes the week; less springs back', async () => {
     await seed()
     render(<Home initialDate="2026-10-07" />)
-    const list = await screen.findByRole('list', { name: 'This week' })
-    const zone = list.closest('div')!.parentElement as HTMLElement
+    await screen.findByRole('list', { name: 'This week' })
+    const zone = screen.getByRole('main', { name: 'Time clock' })
     const drag = (from: number, to: number) => {
       fireEvent.pointerDown(zone, { pointerId: 1, isPrimary: true, clientX: from, clientY: 300 })
       fireEvent.pointerMove(zone, { pointerId: 1, isPrimary: true, clientX: to, clientY: 300 })
       fireEvent.pointerUp(zone, { pointerId: 1, isPrimary: true, clientX: to, clientY: 300 })
     }
-    drag(300, 150) // 150 px of a 1024 px page: not enough
+    drag(600, 150) // 450 px of a 1024 px page: not enough
     await new Promise((r) => setTimeout(r, 300))
     expect(screen.getByText('Oct 4 – 10')).toBeInTheDocument()
-    drag(800, 300) // left, far enough: next week
+    drag(900, 300) // left, over half the width: next week
     expect(await screen.findByText('Oct 11 – 17')).toBeInTheDocument()
     await new Promise((r) => setTimeout(r, 500))
-    drag(100, 700) // right: back
+    drag(50, 700) // right: back
     expect(await screen.findByText('Oct 4 – 10')).toBeInTheDocument()
   })
 
