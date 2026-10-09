@@ -7,6 +7,11 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.3.2',
+    date: '2026-10-09',
+    changes: ['Hours are shown as hours and minutes (7h 50m) everywhere, including the PDF, instead of decimals'],
+  },
+  {
     version: '1.3.1',
     date: '2026-10-08',
     changes: ['Summary is more compact and fits on one screen'],

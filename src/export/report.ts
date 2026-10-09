@@ -1,7 +1,7 @@
 import type { Employer, TimeEntry } from '../domain/types'
 import { shortAddress } from '../location/address'
 import type { EmployerWeek } from '../domain/pay'
-import { formatHours, shiftMinutes } from '../domain/time'
+import { formatDuration, shiftMinutes } from '../domain/time'
 import { formatUSD } from '../domain/money'
 import { rateOn } from '../domain/rates'
 import { weekLabel } from '../domain/weeks'
@@ -59,10 +59,10 @@ export function buildReportModel(
 ): ReportModel {
   const valueLines: ReportModel['valueLines'] = []
   if (o.regularPay) {
-    valueLines.push({ label: 'Regular pay', detail: `${formatHours(week.regularMinutes)} h`, cents: week.regularCents })
+    valueLines.push({ label: 'Regular pay', detail: formatDuration(week.regularMinutes), cents: week.regularCents })
   }
   if (o.overtimePay && week.overtimeMinutes > 0) {
-    valueLines.push({ label: 'Overtime pay', detail: `${formatHours(week.overtimeMinutes)} h`, cents: week.overtimeCents })
+    valueLines.push({ label: 'Overtime pay', detail: formatDuration(week.overtimeMinutes), cents: week.overtimeCents })
   }
   const n = week.expenses.length
   if (o.expenses && n > 0) {
@@ -74,7 +74,7 @@ export function buildReportModel(
     const parts: string[] = []
     if (o.timesAndBreak && e.breakMin > 0) parts.push(`${e.breakMin} min break`)
     if (o.addresses && e.place?.label) parts.push(shortAddress(e.place.label))
-    const day: ReportDay = { label: dateLabel(e.start.split('T')[0]), hours: `${formatHours(shiftMinutes(e))} h` }
+    const day: ReportDay = { label: dateLabel(e.start.split('T')[0]), hours: formatDuration(shiftMinutes(e)) }
     if (o.timesAndBreak) day.times = `${timeLabel(e.start)} – ${timeLabel(e.end)}`
     if (parts.length) day.detail = parts.join(' · ')
     return day
@@ -97,7 +97,7 @@ export function buildReportModel(
   const model: ReportModel = {
     employerName: employer.name,
     weekLabel: weekLabel(weekStart),
-    hoursTotal: `${formatHours(week.minutes)} h`,
+    hoursTotal: formatDuration(week.minutes),
     valueLines,
     totalCents: valueLines.length ? valueLines.reduce((s, l) => s + l.cents, 0) : null,
     days,

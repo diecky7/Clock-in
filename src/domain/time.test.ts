@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { shiftMinutes, validateShift, formatDate, formatDateTime, formatHours } from './time'
+import { shiftMinutes, validateShift, formatDate, formatDateTime, formatDuration } from './time'
 describe('time', () => {
   it('shiftMinutes', () => {
     expect(shiftMinutes({ start: '2026-10-05T07:00', end: '2026-10-05T15:30', breakMin: 30 })).toBe(480)
@@ -22,9 +22,11 @@ describe('time', () => {
     expect(formatDate('2026-10-05')).toBe('10/05/2026')
     expect(formatDate('not a date')).toBe('not a date')
   })
-  it('formatHours', () => {
-    expect(formatHours(480)).toBe('8.0')
-    expect(formatHours(510)).toBe('8.5')
-    expect(formatHours(495)).toBe('8.25')
+  it('formatDuration shows hours and minutes, never decimals', () => {
+    expect(formatDuration(480)).toBe('8h 00m')
+    expect(formatDuration(510)).toBe('8h 30m')
+    expect(formatDuration(470)).toBe('7h 50m')
+    expect(formatDuration(2970)).toBe('49h 30m')
+    expect(formatDuration(0)).toBe('0h 00m')
   })
 })

@@ -9,7 +9,7 @@ import NewChoiceSheet from '../components/NewChoiceSheet'
 import * as repo from '../data/repo'
 import { formatUSD } from '../domain/money'
 import { computeWeek } from '../domain/pay'
-import { formatHours, shiftMinutes } from '../domain/time'
+import { formatDuration, shiftMinutes } from '../domain/time'
 import { today } from '../domain/today'
 import type { Employer, Expense, TimeEntry } from '../domain/types'
 import { addDays, weekLabel, weekStartOf } from '../domain/weeks'
@@ -46,7 +46,7 @@ function RowButton({ row, onOpen }: { row: Row; onOpen: () => void }) {
       {row.kind === 'entry' ? (
         <>
           <span className="flex-1 truncate">{row.employer}</span>
-          <span className="tabular-nums">{row.hours} h</span>
+          <span className="tabular-nums">{row.hours}</span>
         </>
       ) : (
         <>
@@ -121,7 +121,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         date: e.start.slice(0, 10),
         sort: e.start,
         employer: names.get(e.employerId) ?? 'Employer',
-        hours: formatHours(shiftMinutes(e)),
+        hours: formatDuration(shiftMinutes(e)),
       })),
       ...expenses.map<Row>((x) => ({
         kind: 'expense',
@@ -140,7 +140,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
 
   const settled = loadedFor === weekStart
   const hoursPayCents = summary.regularCents + summary.overtimeCents
-  const hours = `${formatHours(summary.totalMinutes)} h`
+  const hours = formatDuration(summary.totalMinutes)
   const detail =
     summary.expensesCents > 0
       ? `${hours} · ${formatUSD(hoursPayCents)} + ${formatUSD(summary.expensesCents)} expenses`

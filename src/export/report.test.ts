@@ -43,7 +43,7 @@ describe('buildReportModel', () => {
     const m = build()
     expect(m.valueLines.map(l => l.label)).toEqual(['Regular pay', 'Overtime pay', 'Expenses'])
     expect(m.totalCents).toBe(w.regularCents + w.overtimeCents + w.expensesCents)
-    expect(m.hoursTotal).toBe('49.5 h')
+    expect(m.hoursTotal).toBe('49h 30m')
     expect(m.employerName).toBe('Acme Painting')
     expect(m.weekLabel).toBe('Oct 5 – 11')
     expect(m.rateLabel).toBe('$30.00/h')
@@ -53,7 +53,7 @@ describe('buildReportModel', () => {
     const m = build({ overtimePay: false })
     expect(m.valueLines.map(l => l.label)).toEqual(['Regular pay', 'Expenses'])
     expect(m.totalCents).toBe(w.regularCents + w.expensesCents)
-    expect(m.hoursTotal).toBe('49.5 h')
+    expect(m.hoursTotal).toBe('49h 30m')
   })
   it('all value options off: no lines, null total', () => {
     const m = build({ regularPay: false, overtimePay: false, expenses: false })
@@ -80,7 +80,7 @@ describe('buildReportModel', () => {
   it('day rows: times, break, address', () => {
     const d = build().days[0]
     expect(d.label).toBe('Mon, Oct 5')
-    expect(d.hours).toBe('9.5 h')
+    expect(d.hours).toBe('9h 30m')
     expect(d.times).toBe('7:00 AM – 5:00 PM')
     expect(d.detail).toBe('30 min break · 12 Main St')
     expect(build().days[1].detail).toBeUndefined()

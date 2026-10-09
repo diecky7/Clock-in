@@ -55,9 +55,8 @@ export function formatDate(s: string): string {
   return m ? `${m[2]}/${m[3]}/${m[1]}` : s
 }
 
-export function formatHours(minutes: number): string {
-  const hours = minutes / 60
-  const one = Math.round(hours * 10) / 10
-  if (Math.abs(one - hours) < 1e-9) return one.toFixed(1)
-  return hours.toFixed(2).replace(/(\.\d)0$/, '$1')
+/** "7h 50m": hours and minutes, never decimals. */
+export function formatDuration(minutes: number): string {
+  const total = Math.max(0, Math.round(minutes))
+  return `${Math.floor(total / 60)}h ${String(total % 60).padStart(2, '0')}m`
 }
