@@ -12,10 +12,10 @@ function model(over: Partial<ReportModel> = {}): ReportModel {
     employerName: 'Acme Painting',
     weekLabel: 'Oct 5 – 11',
     rateLabel: '$30.00/h',
-    hoursTotal: '38.5 h',
-    valueLines: [{ label: 'Regular pay', detail: '38.5 h', cents: 115500 }],
+    hoursTotal: '38h 30m',
+    valueLines: [{ label: 'Regular pay', detail: '38h 30m', cents: 115500 }],
     totalCents: 115500,
-    days: [{ label: 'Mon, Oct 5', times: '7:00 AM – 3:30 PM', hours: '8.0 h', detail: '30 min break · 12 Main St' }],
+    days: [{ label: 'Mon, Oct 5', times: '7:00 AM – 3:30 PM', hours: '8h 00m', detail: '30 min break · 12 Main St' }],
     expenseItems: [],
     receipts: [],
     ...over,
@@ -64,7 +64,7 @@ describe('renderPdf', () => {
     expect(doc.getPageCount()).toBe(2)
   })
   it('30 day rows overflow to extra pages of the same size', async () => {
-    const days = Array.from({ length: 30 }, (_, i) => ({ label: `Day ${i}`, times: '7:00 AM – 3:30 PM', hours: '8.0 h', detail: '30 min break' }))
+    const days = Array.from({ length: 30 }, (_, i) => ({ label: `Day ${i}`, times: '7:00 AM – 3:30 PM', hours: '8h 00m', detail: '30 min break' }))
     const doc = await load([model({ days })])
     expect(doc.getPageCount()).toBeGreaterThan(1)
     for (const p of doc.getPages()) expect(p.getSize()).toEqual({ width: 1080, height: 1920 })

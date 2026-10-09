@@ -6,7 +6,7 @@ import * as repo from '../data/repo'
 import { copyAddress, copyText, decimalCoords, dmsCoords, fullAddress, shortAddress } from '../location/address'
 import { directionLinks } from '../location/directions'
 import { reverseGeocode } from '../location/geocode'
-import { formatDate, formatHours } from '../domain/time'
+import { formatDate, formatDuration } from '../domain/time'
 import type { Employer, Place } from '../domain/types'
 
 const APP_ICON = { 'Apple Maps': FoldedMapIcon, 'Google Maps': RoutePinIcon, Waze: NavArrowIcon } as const
@@ -123,7 +123,7 @@ function DirectionsDialog({ place: saved, employers, onClose }: { place: Place; 
               title="Your work here"
               rows={[
                 ['Times worked', String(history.times)],
-                ['Total hours', `${formatHours(history.minutes)} h`],
+                ['Total hours', formatDuration(history.minutes)],
                 ['First time', history.first ? formatDate(history.first) : undefined],
                 ['Last time', history.last ? formatDate(history.last) : undefined],
               ]}
@@ -141,7 +141,7 @@ function DirectionsDialog({ place: saved, employers, onClose }: { place: Place; 
                       {(
                         [
                           ['Times worked', String(v.times)],
-                          ['Total hours', `${formatHours(v.minutes)} h`],
+                          ['Total hours', formatDuration(v.minutes)],
                           ['First time', formatDate(v.first)],
                           ['Last time', formatDate(v.last)],
                         ] as const

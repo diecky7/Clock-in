@@ -110,7 +110,7 @@ describe('Places', () => {
     expect(within(box).getByText('42.280000')).toBeInTheDocument()
     expect(within(box).getByText('±16 ft')).toBeInTheDocument()
     expect((await within(box).findAllByText('Times worked')).length).toBeGreaterThan(0)
-    expect(within(box).getAllByText('16.0 h').length).toBeGreaterThan(0)
+    expect(within(box).getAllByText('16h 00m').length).toBeGreaterThan(0)
     expect(within(box).getByText('Acme')).toBeInTheDocument()
     expect(within(box).queryByText('Employers', { selector: 'dt' })).not.toBeInTheDocument() // no repeated row in the summary
     await user.click(within(box).getByRole('button', { name: 'Copy coordinates' }))
@@ -140,7 +140,7 @@ describe('Places', () => {
     await user.click(within(bay).getByText('Bay Homes'))
     expect(bay).toHaveProperty('open', true)
     expect(acme).toHaveProperty('open', false)
-    expect(within(bay).getByText('8.0 h')).toBeInTheDocument()
+    expect(within(bay).getByText('8h 00m')).toBeInTheDocument()
   })
 
   it('looks up an old address without details when opened, shows it in full and remembers it', async () => {

@@ -37,7 +37,7 @@ describe('Home', () => {
     await seed()
     render(<Home initialDate="2026-10-07" />)
     expect(await screen.findByText('$1,415.50')).toBeInTheDocument()
-    expect(screen.getByText('38.5 h · $1,240.00 + $175.50 expenses')).toBeInTheDocument()
+    expect(screen.getByText('38h 30m · $1,240.00 + $175.50 expenses')).toBeInTheDocument()
     expect(screen.getByText('Oct 4 – 10')).toBeInTheDocument()
   })
 
@@ -45,7 +45,7 @@ describe('Home', () => {
     await seed(false)
     render(<Home initialDate="2026-10-07" />)
     expect(await screen.findByText('$1,240.00')).toBeInTheDocument()
-    expect(screen.getByText('38.5 h')).toBeInTheDocument()
+    expect(screen.getByText('38h 30m')).toBeInTheDocument()
   })
 
   it('week buttons change the label; a future empty week shows empty state', async () => {

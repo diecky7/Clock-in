@@ -39,7 +39,7 @@ describe('EntryForm', () => {
     expect(screen.getByText('Mon, Oct 5 · 7:00 AM')).toBeInTheDocument()
     expect(screen.getByText('Mon, Oct 5 · 3:30 PM')).toBeInTheDocument()
     expect(screen.getByLabelText('Break (min)')).toHaveValue(30)
-    expect(screen.getByRole('button', { name: 'Save · 8.0 h' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save · 8h 00m' })).toBeInTheDocument()
   })
 
   it('employer buttons select the employer', async () => {

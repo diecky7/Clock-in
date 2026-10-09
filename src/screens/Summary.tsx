@@ -3,7 +3,7 @@ import { Screen, Section } from '../components/ui'
 import { useWeekSwipe } from '../components/useWeekSwipe'
 import * as repo from '../data/repo'
 import { formatUSD } from '../domain/money'
-import { formatHours } from '../domain/time'
+import { formatDuration } from '../domain/time'
 import { today } from '../domain/today'
 import { monthRange, summarizePeriod, yearRange, type PeriodSummary } from '../domain/summary'
 import type { Employer, Expense, TimeEntry } from '../domain/types'
@@ -52,8 +52,8 @@ export default function Summary() {
 
   const cards: [string, (s: PeriodSummary) => string][] = [
     ['Total', (s) => formatUSD(s.totalCents)],
-    ['Hours', (s) => `${formatHours(s.minutes)} h`],
-    ['Overtime', (s) => `${formatHours(s.overtimeMinutes)} h`],
+    ['Hours', (s) => formatDuration(s.minutes)],
+    ['Overtime', (s) => formatDuration(s.overtimeMinutes)],
     ['Earnings', (s) => formatUSD(s.earnedCents)],
     ['Expenses', (s) => formatUSD(s.expensesCents)],
   ]

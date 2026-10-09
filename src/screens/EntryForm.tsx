@@ -5,7 +5,7 @@ import { Field, PrimaryButton, Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
 import { defaultEmployerId } from '../domain/employers'
 import { rateOn } from '../domain/rates'
-import { formatHours, shiftMinutes, validateShift } from '../domain/time'
+import { formatDuration, shiftMinutes, validateShift } from '../domain/time'
 import { today } from '../domain/today'
 import type { Employer, Place, Settings, TimeEntry } from '../domain/types'
 import { addDays } from '../domain/weeks'
@@ -184,7 +184,7 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
   const brk = parseBreak(breakText)
   const shift = { start, end, breakMin: brk }
   const valid = DATETIME.test(start) && DATETIME.test(end) && validateShift(shift) === null
-  const saveLabel = valid ? `Save · ${formatHours(shiftMinutes(shift))} h` : 'Save'
+  const saveLabel = valid ? `Save · ${formatDuration(shiftMinutes(shift))}` : 'Save'
 
   async function save() {
     const next: typeof errors = {}
