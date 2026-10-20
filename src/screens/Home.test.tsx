@@ -118,6 +118,13 @@ describe('Home', () => {
     expect(await screen.findByRole('button', { name: 'Aug 23 – Sep 5, change period' })).toBeInTheDocument()
   })
 
+  it('two weeks follow the employer pay period start', async () => {
+    await repo.saveEmployer({ ...acme, biweeklyStart: '2026-10-01' })
+    await repo.saveSettings({ ...(await repo.getSettings()), homePeriod: 'biweek' })
+    render(<Home initialDate="2026-10-07" />)
+    expect(await screen.findByRole('button', { name: 'Oct 1 – 14, change period' })).toBeInTheDocument()
+  })
+
   it('holding a row opens Edit/Delete; Delete asks to confirm and removes the row', async () => {
     await seed(false)
     const user = userEvent.setup()

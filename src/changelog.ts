@@ -7,6 +7,11 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.5.0',
+    date: '2026-10-20',
+    changes: ['Each employer can set the day its biweekly pay period starts; the home screen\'s Biweekly view follows it'],
+  },
+  {
     version: '1.4.0',
     date: '2026-10-20',
     changes: [

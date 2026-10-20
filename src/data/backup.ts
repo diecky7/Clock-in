@@ -65,7 +65,8 @@ const isDateTime = (v: unknown): v is string => isStr(v) && DATETIME_RE.test(v)
 
 const validEmployer = (r: unknown): r is Employer =>
   isObj(r) && isStr(r.id) && isStr(r.name) && isBool(r.overtimeEnabled) && isBool(r.archived) &&
-  isArr(r.rates) && r.rates.every((x) => isObj(x) && isDate(x.from) && isCents(x.cents))
+  isArr(r.rates) && r.rates.every((x) => isObj(x) && isDate(x.from) && isCents(x.cents)) &&
+  (r.biweeklyStart === undefined || isDate(r.biweeklyStart))
 const validPlace = (p: unknown): boolean =>
   isObj(p) && isNum(p.lat) && isNum(p.lon) && isStr(p.label) && (p.detail === undefined || isObj(p.detail))
 const validEntry = (r: unknown): r is TimeEntry =>

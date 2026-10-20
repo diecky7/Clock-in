@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { periodEnd, periodLabel, periodStart, shiftPeriod } from './periods'
+import { biweekAnchorFor, periodEnd, periodLabel, periodStart, shiftPeriod } from './periods'
 import { summarizePeriod } from './summary'
 import type { Employer, TimeEntry } from './types'
 
@@ -13,6 +13,23 @@ describe('periods', () => {
     expect(periodStart('biweek', periodEnd('biweek', b), 0)).toBe(b)
     expect(periodStart('biweek', shiftPeriod('biweek', b, 1), 0)).toBe(shiftPeriod('biweek', b, 1))
     expect(['2026-10-11', '2026-10-18']).toContain(b)
+  })
+
+  it('two-week periods follow the employer start date every 14 days, any weekday', () => {
+    const a = '2026-10-15' // a Thursday
+    expect(periodStart('biweek', '2026-10-20', 0, a)).toBe('2026-10-15')
+    expect(periodStart('biweek', '2026-10-28', 0, a)).toBe('2026-10-15')
+    expect(periodStart('biweek', '2026-10-29', 0, a)).toBe('2026-10-29')
+    expect(periodStart('biweek', '2026-10-14', 0, a)).toBe('2026-10-01')
+    expect(periodStart('biweek', '2026-10-15', 0, a)).toBe('2026-10-15')
+  })
+
+  it('uses the last-used employer, else the first that has a start date', () => {
+    const e = (id: string, biweeklyStart?: string, archived = false) => ({ id, name: id, overtimeEnabled: false, archived, rates: [], biweeklyStart }) as Employer
+    expect(biweekAnchorFor([e('a', '2026-01-05'), e('b', '2026-01-12')], 'b')).toBe('2026-01-12')
+    expect(biweekAnchorFor([e('a'), e('b', '2026-01-12')], 'a')).toBe('2026-01-12')
+    expect(biweekAnchorFor([e('a', '2026-01-05', true)], 'a')).toBeUndefined()
+    expect(biweekAnchorFor([])).toBeUndefined()
   })
 
   it('moves and labels periods', () => {

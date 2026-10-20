@@ -13,7 +13,7 @@ import { formatDuration, shiftMinutes } from '../domain/time'
 import { today } from '../domain/today'
 import type { Employer, Expense, TimeEntry } from '../domain/types'
 import { addDays, weekStartOf } from '../domain/weeks'
-import { PERIOD_WORDS, periodEnd, periodLabel, periodStart, shiftPeriod, type PeriodKind } from '../domain/periods'
+import { biweekAnchorFor, PERIOD_WORDS, periodEnd, periodLabel, periodStart, shiftPeriod, type PeriodKind } from '../domain/periods'
 import { summarizePeriod } from '../domain/summary'
 import PeriodPicker from '../components/PeriodPicker'
 import { navigate } from '../router'
@@ -68,6 +68,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
   const [kind, setKind] = useState<PeriodKind>('week')
   const [from, setFrom] = useState<string | null>(null)
   const [weekStartsOn, setWeekStartsOn] = useState(0)
+  const [anchor, setAnchor] = useState<string | undefined>(undefined)
   const [employers, setEmployers] = useState<Employer[]>([])
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -78,12 +79,14 @@ export default function Home({ initialDate }: { initialDate?: string }) {
 
   useEffect(() => {
     let alive = true
-    void repo.getSettings().then((s) => {
+    void Promise.all([repo.getSettings(), repo.listEmployers()]).then(([s, emps]) => {
       if (!alive) return
       const k = s.homePeriod ?? 'week'
+      const a = biweekAnchorFor(emps, s.lastEmployerId)
       setKind(k)
       setWeekStartsOn(s.weekStartsOn)
-      setFrom(periodStart(k, initialDate ?? today(), s.weekStartsOn))
+      setAnchor(a)
+      setFrom(periodStart(k, initialDate ?? today(), s.weekStartsOn, a))
     })
     return () => {
       alive = false
@@ -128,7 +131,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
     if (k === kind || !from) return
     // Keep the dates in view: the new period is the one holding the first day of the old one.
     setKind(k)
-    setFrom(periodStart(k, from, weekStartsOn))
+    setFrom(periodStart(k, from, weekStartsOn, anchor))
     void repo.getSettings().then((s) => repo.saveSettings({ ...s, homePeriod: k }))
   }
 
