@@ -1,4 +1,5 @@
 import { monthRange } from './summary'
+import type { Employer } from './types'
 import { addDays, weekLabel, weekStartOf } from './weeks'
 
 export type PeriodKind = 'week' | 'biweek' | 'month'
@@ -20,13 +21,22 @@ const dayNumber = (d: string) => {
   return Date.UTC(y, m - 1, dd) / 86_400_000
 }
 
-/** First day of the period of `kind` that contains `date`. */
-export function periodStart(kind: PeriodKind, date: string, weekStartsOn: number): string {
+/**
+ * First day of the period of `kind` that contains `date`. Two-week periods run every 14 days from `biweekAnchor`
+ * (an employer's pay-period start); without one, from the first week of 2026.
+ */
+export function periodStart(kind: PeriodKind, date: string, weekStartsOn: number, biweekAnchor?: string): string {
   if (kind === 'month') return `${date.slice(0, 7)}-01`
-  const ws = weekStartOf(date, weekStartsOn)
-  if (kind === 'week') return ws
-  const weeks = Math.round((dayNumber(ws) - dayNumber(weekStartOf(BIWEEK_EPOCH, weekStartsOn))) / 7)
-  return ((weeks % 2) + 2) % 2 === 0 ? ws : addDays(ws, -7)
+  if (kind === 'week') return weekStartOf(date, weekStartsOn)
+  const anchor = biweekAnchor ?? weekStartOf(BIWEEK_EPOCH, weekStartsOn)
+  const days = Math.round(dayNumber(date) - dayNumber(anchor))
+  return addDays(anchor, Math.floor(days / 14) * 14)
+}
+
+/** The two-week pay period to show: the last-used employer's, else the first active employer that has one. */
+export function biweekAnchorFor(employers: Employer[], lastEmployerId?: string): string | undefined {
+  const active = employers.filter((e) => !e.archived)
+  return (active.find((e) => e.id === lastEmployerId)?.biweeklyStart ?? active.find((e) => e.biweeklyStart)?.biweeklyStart) || undefined
 }
 
 /** Last day (inclusive) of the period that starts on `start`. */

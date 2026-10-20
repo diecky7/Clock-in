@@ -21,6 +21,8 @@ export interface Employer {
   overtimeEnabled: boolean
   archived: boolean
   rates: RateChange[]
+  /** First day of one of this employer's two-week pay periods (YYYY-MM-DD); the rest follow every 14 days. */
+  biweeklyStart?: string
 }
 export interface TimeEntry {
   id: string

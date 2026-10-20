@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import * as repo from '../data/repo'
 import { Field, PrimaryButton, Screen, Switch, inputCls } from '../components/ui'
 import MoneyInput from '../components/MoneyInput'
+import DateTimeField from '../components/DateTimeField'
 import { formatUSD } from '../domain/money'
 import { addRateChange, rateOn } from '../domain/rates'
 import { formatDate } from '../domain/time'
@@ -16,6 +17,7 @@ export default function EmployerEdit({ id }: { id: string }) {
   const [name, setName] = useState('')
   const [rate, setRate] = useState<number | null>(null)
   const [overtime, setOvertime] = useState(false)
+  const [biweekly, setBiweekly] = useState('')
   const [errors, setErrors] = useState<{ name?: string; rate?: string }>({})
   const [confirmArchive, setConfirmArchive] = useState(false)
 
@@ -30,6 +32,7 @@ export default function EmployerEdit({ id }: { id: string }) {
         setName(e.name)
         setRate(rateOn(e, today()))
         setOvertime(e.overtimeEnabled)
+        setBiweekly(e.biweeklyStart ?? '')
       }
       setLoaded(true)
     })
@@ -53,7 +56,7 @@ export default function EmployerEdit({ id }: { id: string }) {
       archived: false,
       rates: [{ from: today(), cents }],
     }
-    e = { ...e, name: name.trim(), overtimeEnabled: overtime }
+    e = { ...e, name: name.trim(), overtimeEnabled: overtime, biweeklyStart: biweekly || undefined }
     if (employer && cents !== rateOn(employer, today())) {
       e = addRateChange(e, { from: today(), cents })
     }
@@ -82,6 +85,16 @@ export default function EmployerEdit({ id }: { id: string }) {
       <div className="mt-6 flex min-h-14 items-center justify-between rounded-2xl bg-surface px-4">
         <span>Overtime 1.5× after 40 h</span>
         <Switch checked={overtime} onChange={setOvertime} label="Overtime 1.5× after 40 h" />
+      </div>
+
+      <DateTimeField type="date" label="Biweekly pay period starts on" value={biweekly} onChange={setBiweekly} className="mt-6" />
+      <div className="mt-2 flex items-start justify-between gap-3">
+        <p className="text-sm text-muted">Any first day of a two-week period. The next ones follow every 14 days.</p>
+        {biweekly && (
+          <button type="button" onClick={() => setBiweekly('')} className="-mt-2 min-h-11 shrink-0 px-2 text-sm text-muted">
+            Clear
+          </button>
+        )}
       </div>
 
       {employer && (
