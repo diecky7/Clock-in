@@ -14,6 +14,17 @@ export interface EmployerWeek {
   expensesCents: number
   entries: TimeEntry[]
   expenses: Expense[]
+  /** How each shift splits into regular and overtime (exact cents, unrounded), in shift order. */
+  splits: ShiftSplit[]
+}
+
+export interface ShiftSplit {
+  entryId: string
+  date: string
+  regularMinutes: number
+  overtimeMinutes: number
+  regularExact: number
+  overtimeExact: number
 }
 
 export interface WeekSummary {
@@ -41,7 +52,7 @@ export function computeWeek(input: {
     if (!g) {
       g = {
         employerId: id, minutes: 0, regularMinutes: 0, overtimeMinutes: 0,
-        regularCents: 0, overtimeCents: 0, expensesCents: 0, entries: [], expenses: [],
+        regularCents: 0, overtimeCents: 0, expensesCents: 0, entries: [], expenses: [], splits: [],
       }
       groups.set(id, g)
     }
@@ -69,8 +80,11 @@ export function computeWeek(input: {
       g.minutes += m
       g.regularMinutes += regular
       g.overtimeMinutes += over
-      regularExact += (regular * e.rateCents) / 60
-      overtimeExact += (over * e.rateCents * 1.5) / 60
+      const rx = (regular * e.rateCents) / 60
+      const ox = (over * e.rateCents * 1.5) / 60
+      regularExact += rx
+      overtimeExact += ox
+      g.splits.push({ entryId: e.id, date: e.start.slice(0, 10), regularMinutes: regular, overtimeMinutes: over, regularExact: rx, overtimeExact: ox })
     }
     // round once per employer per kind so the PDF total matches hours x rate
     g.regularCents = Math.round(regularExact)

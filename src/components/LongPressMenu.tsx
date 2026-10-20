@@ -53,7 +53,7 @@ export function LongPressMenu({
         {confirming ? (
           <>
             <p className="px-2 py-3 text-center text-base">Delete this {noun}?</p>
-            <button type="button" className={`${btn} bg-danger text-white`} onClick={onConfirmDelete}>
+            <button type="button" className={`${btn} bg-danger text-accent-fg`} onClick={onConfirmDelete}>
               Yes, delete
             </button>
           </>

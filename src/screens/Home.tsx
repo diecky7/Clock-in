@@ -12,7 +12,10 @@ import { computeWeek } from '../domain/pay'
 import { formatDuration, shiftMinutes } from '../domain/time'
 import { today } from '../domain/today'
 import type { Employer, Expense, TimeEntry } from '../domain/types'
-import { addDays, weekLabel, weekStartOf } from '../domain/weeks'
+import { addDays, weekStartOf } from '../domain/weeks'
+import { PERIOD_WORDS, periodEnd, periodLabel, periodStart, shiftPeriod, type PeriodKind } from '../domain/periods'
+import { summarizePeriod } from '../domain/summary'
+import PeriodPicker from '../components/PeriodPicker'
 import { navigate } from '../router'
 
 const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -62,7 +65,9 @@ function RowButton({ row, onOpen }: { row: Row; onOpen: () => void }) {
 }
 
 export default function Home({ initialDate }: { initialDate?: string }) {
-  const [weekStart, setWeekStart] = useState<string | null>(null)
+  const [kind, setKind] = useState<PeriodKind>('week')
+  const [from, setFrom] = useState<string | null>(null)
+  const [weekStartsOn, setWeekStartsOn] = useState(0)
   const [employers, setEmployers] = useState<Employer[]>([])
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -74,48 +79,84 @@ export default function Home({ initialDate }: { initialDate?: string }) {
   useEffect(() => {
     let alive = true
     void repo.getSettings().then((s) => {
-      if (alive) setWeekStart(weekStartOf(initialDate ?? today(), s.weekStartsOn))
+      if (!alive) return
+      const k = s.homePeriod ?? 'week'
+      setKind(k)
+      setWeekStartsOn(s.weekStartsOn)
+      setFrom(periodStart(k, initialDate ?? today(), s.weekStartsOn))
     })
     return () => {
       alive = false
     }
   }, [initialDate])
 
-  const load = useCallback(async (ws: string) => {
-    const to = addDays(ws, 6)
-    const [emps, ents, exps] = await Promise.all([
-      repo.listEmployers(),
-      repo.listEntriesBetween(ws, to),
-      repo.listExpensesBetween(ws, to),
-    ])
-    setEmployers(emps)
-    setEntries(ents)
-    setExpenses(exps)
-    setLoadedFor(ws)
-  }, [])
+  const to = from ? periodEnd(kind, from) : null
+  const key = from ? `${kind}:${from}` : null
+
+  const load = useCallback(
+    async (start: string, end: string, k: string) => {
+      // Whole work weeks around the period, so overtime is judged on the full week.
+      const wFrom = weekStartOf(start, weekStartsOn)
+      const wTo = addDays(weekStartOf(end, weekStartsOn), 6)
+      const [emps, ents, exps] = await Promise.all([
+        repo.listEmployers(),
+        repo.listEntriesBetween(wFrom, wTo),
+        repo.listExpensesBetween(start, end),
+      ])
+      setEmployers(emps)
+      setEntries(ents)
+      setExpenses(exps)
+      setLoadedFor(k)
+    },
+    [weekStartsOn],
+  )
 
   useEffect(() => {
-    if (!weekStart) return
+    if (!from || !to || !key) return
     let alive = true
-    void load(weekStart).catch(() => {
-      if (alive) setLoadedFor(weekStart)
+    void load(from, to, key).catch(() => {
+      if (alive) setLoadedFor(key)
     })
     return () => {
       alive = false
     }
-  }, [weekStart, load])
+  }, [from, to, key, load])
 
-  const swipe = useWeekSwipe((dir) => setWeekStart((w) => (w ? addDays(w, dir * 7) : w)))
+  const swipe = useWeekSwipe((dir) => setFrom((f) => (f ? shiftPeriod(kind, f, dir) : f)))
+
+  function changeKind(k: PeriodKind) {
+    if (k === kind || !from) return
+    // Keep the dates in view: the new period is the one holding the first day of the old one.
+    setKind(k)
+    setFrom(periodStart(k, from, weekStartsOn))
+    void repo.getSettings().then((s) => repo.saveSettings({ ...s, homePeriod: k }))
+  }
 
   const summary = useMemo(
-    () => (weekStart ? computeWeek({ weekStart, entries, expenses, employers }) : null),
-    [weekStart, entries, expenses, employers],
+    () =>
+      from && to
+        ? kind === 'week'
+          ? (({ totalMinutes, regularCents, overtimeCents, expensesCents, totalCents }) => ({
+              minutes: totalMinutes,
+              earnedCents: regularCents + overtimeCents,
+              expensesCents,
+              totalCents,
+            }))(computeWeek({ weekStart: from, entries, expenses, employers }))
+          : summarizePeriod({ from, to, weekStartsOn, entries, expenses, employers })
+        : null,
+    [kind, from, to, weekStartsOn, entries, expenses, employers],
+  )
+
+  // Shifts loaded for the whole weeks around the period; list only the ones inside it.
+  const shown = useMemo(
+    () => (from && to ? entries.filter((e) => e.start.slice(0, 10) >= from && e.start.slice(0, 10) <= to) : []),
+    [entries, from, to],
   )
 
   const rows = useMemo<Row[]>(() => {
     const names = new Map(employers.map((e) => [e.id, e.name]))
     const list: Row[] = [
-      ...entries.map<Row>((e) => ({
+      ...shown.map<Row>((e) => ({
         kind: 'entry',
         id: e.id,
         date: e.start.slice(0, 10),
@@ -134,25 +175,26 @@ export default function Home({ initialDate }: { initialDate?: string }) {
     ]
     // Most recent first.
     return list.sort((a, b) => b.sort.localeCompare(a.sort))
-  }, [entries, expenses, employers])
+  }, [shown, expenses, employers])
 
-  if (!weekStart || !summary) return <main aria-label="Time clock" />
+  if (!from || !to || !summary) return <main aria-label="Time clock" />
 
-  const settled = loadedFor === weekStart
-  const hoursPayCents = summary.regularCents + summary.overtimeCents
-  const hours = formatDuration(summary.totalMinutes)
+  const settled = loadedFor === key
+  const words = PERIOD_WORDS[kind]
+  const hoursPayCents = summary.earnedCents
+  const hours = formatDuration(summary.minutes)
   const detail =
     summary.expensesCents > 0
       ? `${hours} · ${formatUSD(hoursPayCents)} + ${formatUSD(summary.expensesCents)} expenses`
       : hours
 
   async function remove() {
-    if (!menu || !weekStart) return
+    if (!menu || !from || !to || !key) return
     if (menu.kind === 'entry') await repo.deleteEntry(menu.id)
     else await repo.deleteExpense(menu.id)
     setMenu(null)
     setConfirming(false)
-    await load(weekStart)
+    await load(from, to, key)
   }
 
   const closeMenu = () => {
@@ -181,7 +223,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
           <button type="button" aria-label="Places" className={iconBtn} onClick={() => navigate('/places')}>
             <PinIcon />
           </button>
-          <button type="button" aria-label="Export" className={iconBtn} onClick={() => navigate(`/export?week=${weekStart}`)}>
+          <button type="button" aria-label="Export" className={iconBtn} onClick={() => navigate(`/export?week=${weekStartOf(from, weekStartsOn)}`)}>
             <ShareIcon />
           </button>
         </div>
@@ -189,12 +231,12 @@ export default function Home({ initialDate }: { initialDate?: string }) {
       <PersistenceNote />
 
       <div style={swipe.style} className="min-h-[60dvh]">
-      <nav aria-label="Week" className="mt-2 flex items-center justify-between">
-        <button type="button" aria-label="Previous week" className={`${iconBtn} text-2xl`} onClick={() => setWeekStart(addDays(weekStart, -7))}>
+      <nav aria-label="Period" className="mt-2 flex items-center justify-between">
+        <button type="button" aria-label={`Previous ${words.unit}`} className={`${iconBtn} text-2xl`} onClick={() => setFrom(shiftPeriod(kind, from, -1))}>
           ‹
         </button>
-        <span className="text-base font-medium">{weekLabel(weekStart)}</span>
-        <button type="button" aria-label="Next week" className={`${iconBtn} text-2xl`} onClick={() => setWeekStart(addDays(weekStart, 7))}>
+        <PeriodPicker kind={kind} label={periodLabel(kind, from)} onChange={changeKind} />
+        <button type="button" aria-label={`Next ${words.unit}`} className={`${iconBtn} text-2xl`} onClick={() => setFrom(shiftPeriod(kind, from, 1))}>
           ›
         </button>
       </nav>
@@ -206,9 +248,9 @@ export default function Home({ initialDate }: { initialDate?: string }) {
 
       <div className="mt-10">
         {!settled ? null : rows.length === 0 ? (
-          <p className="py-8 text-center text-muted">Nothing logged this week</p>
+          <p className="py-8 text-center text-muted">Nothing logged {words.this}</p>
         ) : (
-          <ul aria-label="This week" className="divide-y divide-border">
+          <ul aria-label={words.this.replace(/^t/, 'T')} className="divide-y divide-border">
             {rows.map((r) => (
               <li key={`${r.kind}-${r.id}`}>
                 <RowButton

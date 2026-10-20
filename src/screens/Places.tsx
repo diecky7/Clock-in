@@ -3,7 +3,7 @@ import Modal from '../components/Modal'
 import { CopyIcon, FoldedMapIcon, NavArrowIcon, RoutePinIcon } from '../components/icons'
 import { Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
-import { copyAddress, copyText, decimalCoords, dmsCoords, fullAddress, shortAddress } from '../location/address'
+import { copyAddress, copyText, decimalCoords, dmsCoords, fullAddress, placeKey, shortAddress } from '../location/address'
 import { directionLinks } from '../location/directions'
 import { reverseGeocode } from '../location/geocode'
 import { formatDate, formatDuration } from '../domain/time'
@@ -31,7 +31,18 @@ function Group({ title, rows }: { title: string; rows: Row[] }) {
   )
 }
 
-function DirectionsDialog({ place: saved, employers, onClose }: { place: Place; employers: Employer[]; onClose: () => void }) {
+function DirectionsDialog({
+  place: saved,
+  employers,
+  onClose,
+  onDelete,
+}: {
+  place: Place
+  employers: Employer[]
+  onClose: () => void
+  onDelete: () => void
+}) {
+  const [askDelete, setAskDelete] = useState(false)
   const [place, setPlace] = useState(saved)
   const first = useRef<HTMLAnchorElement>(null)
   const [history, setHistory] = useState<repo.PlaceHistory | null>(null)
@@ -159,7 +170,22 @@ function DirectionsDialog({ place: saved, employers, onClose }: { place: Place; 
           </>
         )}
 
-        <button type="button" className="mt-3 min-h-12 w-full text-base text-muted" onClick={onClose}>
+        {askDelete ? (
+          <div role="group" aria-label="Delete address" className="mt-4 space-y-2 rounded-2xl bg-bg p-3">
+            <p className="px-1 text-center text-base">Delete this address? Past entries keep it.</p>
+            <button type="button" className="min-h-12 w-full rounded-xl bg-danger text-base font-medium text-accent-fg" onClick={onDelete}>
+              Yes, delete
+            </button>
+            <button type="button" className="min-h-12 w-full rounded-xl text-base text-muted" onClick={() => setAskDelete(false)}>
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="mt-4 min-h-12 w-full text-base font-medium text-danger" onClick={() => setAskDelete(true)}>
+            Delete address
+          </button>
+        )}
+        <button type="button" className="min-h-12 w-full text-base text-muted" onClick={onClose}>
           Close
         </button>
     </Modal>
@@ -233,7 +259,19 @@ export default function Places() {
         ))}
       </ul>
       {places && places.length > 0 && shown.length === 0 && <p className="mt-6 text-center text-muted">No matches</p>}
-      {picked && <DirectionsDialog place={picked} employers={employers} onClose={() => setPicked(null)} />}
+      {picked && (
+        <DirectionsDialog
+          place={picked}
+          employers={employers}
+          onClose={() => setPicked(null)}
+          onDelete={() => {
+            const gone = placeKey(picked.label)
+            setPicked(null)
+            setPlaces((all) => (all ?? []).filter((p) => placeKey(p.label) !== gone))
+            void repo.deletePlace(picked.label)
+          }}
+        />
+      )}
     </Screen>
   )
 }

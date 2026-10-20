@@ -190,7 +190,7 @@ export default function Settings() {
       {pendingImport && (
         <Modal label="Replace data" placement="bottom" onClose={() => setPendingImport(null)}>
             <p className="px-2 py-3 text-center text-base">Replace all data on this device?</p>
-            <button type="button" className="min-h-12 w-full rounded-xl bg-danger font-medium text-white" onClick={() => void doImport()}>
+            <button type="button" className="min-h-12 w-full rounded-xl bg-danger font-medium text-accent-fg" onClick={() => void doImport()}>
               Replace
             </button>
             <button type="button" className="min-h-12 w-full rounded-xl text-muted" onClick={() => setPendingImport(null)}>

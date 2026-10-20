@@ -1,0 +1,62 @@
+import { monthRange } from './summary'
+import { addDays, weekLabel, weekStartOf } from './weeks'
+
+export type PeriodKind = 'week' | 'biweek' | 'month'
+
+export const PERIOD_KINDS: { kind: PeriodKind; name: string }[] = [
+  { kind: 'week', name: 'Weekly' },
+  { kind: 'biweek', name: 'Biweekly' },
+  { kind: 'month', name: 'Monthly' },
+]
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** Biweekly periods are pairs of weeks counted from the first week of 2026, so they never shift. */
+const BIWEEK_EPOCH = '2026-01-01'
+
+const dayNumber = (d: string) => {
+  const [y, m, dd] = d.split('-').map(Number)
+  return Date.UTC(y, m - 1, dd) / 86_400_000
+}
+
+/** First day of the period of `kind` that contains `date`. */
+export function periodStart(kind: PeriodKind, date: string, weekStartsOn: number): string {
+  if (kind === 'month') return `${date.slice(0, 7)}-01`
+  const ws = weekStartOf(date, weekStartsOn)
+  if (kind === 'week') return ws
+  const weeks = Math.round((dayNumber(ws) - dayNumber(weekStartOf(BIWEEK_EPOCH, weekStartsOn))) / 7)
+  return ((weeks % 2) + 2) % 2 === 0 ? ws : addDays(ws, -7)
+}
+
+/** Last day (inclusive) of the period that starts on `start`. */
+export function periodEnd(kind: PeriodKind, start: string): string {
+  if (kind === 'week') return addDays(start, 6)
+  if (kind === 'biweek') return addDays(start, 13)
+  return monthRange(start)[1]
+}
+
+/** Start of the next (dir 1) or previous (dir -1) period. */
+export function shiftPeriod(kind: PeriodKind, start: string, dir: -1 | 1): string {
+  if (kind === 'week') return addDays(start, 7 * dir)
+  if (kind === 'biweek') return addDays(start, 14 * dir)
+  const [y, m] = start.split('-').map(Number)
+  const d = new Date(Date.UTC(y, m - 1 + dir, 1))
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-01`
+}
+
+export function periodLabel(kind: PeriodKind, start: string): string {
+  if (kind === 'week') return weekLabel(start)
+  if (kind === 'month') return `${MONTHS[Number(start.slice(5, 7)) - 1]} ${start.slice(0, 4)}`
+  const end = periodEnd(kind, start)
+  const [sm, em] = [Number(start.slice(5, 7)) - 1, Number(end.slice(5, 7)) - 1]
+  const tail = sm === em ? `${Number(end.slice(8))}` : `${SHORT[em]} ${Number(end.slice(8))}`
+  return `${SHORT[sm]} ${Number(start.slice(8))} – ${tail}`
+}
+
+/** Words for the arrows and the empty list. */
+export const PERIOD_WORDS: Record<PeriodKind, { unit: string; this: string }> = {
+  week: { unit: 'week', this: 'this week' },
+  biweek: { unit: 'two weeks', this: 'these two weeks' },
+  month: { unit: 'month', this: 'this month' },
+}
