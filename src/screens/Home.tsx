@@ -226,7 +226,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
           <button type="button" aria-label="Places" className={iconBtn} onClick={() => navigate('/places')}>
             <PinIcon />
           </button>
-          <button type="button" aria-label="Export" className={iconBtn} onClick={() => navigate(`/export?week=${weekStartOf(from, weekStartsOn)}`)}>
+          <button type="button" aria-label="Export" className={iconBtn} onClick={() => navigate(`/export?period=${kind}&from=${from}`)}>
             <ShareIcon />
           </button>
         </div>

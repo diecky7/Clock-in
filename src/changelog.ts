@@ -7,6 +7,14 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.6.0',
+    date: '2026-10-20',
+    changes: [
+      'Export a weekly, biweekly or monthly PDF; it opens on the period shown on the home screen',
+      'Biweekly PDFs follow the employer\'s pay period; overtime is still judged on whole work weeks',
+    ],
+  },
+  {
     version: '1.5.0',
     date: '2026-10-20',
     changes: ['Each employer can set the day its biweekly pay period starts; the home screen\'s Biweekly view follows it'],

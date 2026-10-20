@@ -113,4 +113,35 @@ describe('Export', () => {
     await user.click(share)
     expect(await screen.findByRole('alert')).toHaveTextContent('Select at least one employer')
   })
+
+  it('exports a month or two weeks, with overtime judged on the whole week', async () => {
+    await repo.saveEmployer({ ...emp('e1', 'Acme'), overtimeEnabled: true, biweeklyStart: '2026-09-24' })
+    // Week Sep 27 – Oct 3: 10 h a day Mon–Fri; the Friday (Oct 2) is all overtime.
+    for (const d of ['2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02'])
+      await repo.saveEntry({ id: d, employerId: 'e1', start: `${d}T07:00`, end: `${d}T17:00`, breakMin: 0, rateCents: 3000 })
+    const share = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { ...navigator, canShare: () => true, share })
+    const user = userEvent.setup()
+    render(<Export period="week" from="2026-10-01" />)
+    expect(await screen.findByText('Sep 27 – Oct 3')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Monthly' }))
+    expect(await screen.findByText('September 2026')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Next month' }))
+    expect(await screen.findByText('October 2026')).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'Share PDF' }))
+    await waitFor(() => expect(share).toHaveBeenCalledTimes(1))
+    const [m] = vi.mocked(renderPdf).mock.calls[0][0]
+    expect(m.weekLabel).toBe('October 2026')
+    expect(m.hoursTotal).toBe('20h 00m')
+    expect(m.days).toHaveLength(2)
+    expect(m.valueLines.map((l) => [l.label, l.cents])).toEqual([['Regular pay', 30000], ['Overtime pay', 45000]])
+    expect((share.mock.calls[0][0].files[0] as File).name).toBe('time-report-month-2026-10-01.pdf')
+
+    await user.click(screen.getByRole('button', { name: 'Biweekly' }))
+    expect(await screen.findByText('Sep 24 – Oct 7')).toBeInTheDocument() // the employer's pay period
+    await user.click(screen.getByRole('button', { name: 'Previous two weeks' }))
+    expect(await screen.findByText('Sep 10 – 23')).toBeInTheDocument()
+    expect(await screen.findByText('Nothing to export for these two weeks')).toBeInTheDocument()
+  })
 })

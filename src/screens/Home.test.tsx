@@ -180,6 +180,6 @@ describe('Home', () => {
     await user.click(await screen.findByRole('button', { name: 'Settings' }))
     expect(window.location.hash).toBe('#/settings')
     await user.click(screen.getByRole('button', { name: 'Export' }))
-    expect(window.location.hash).toBe('#/export?week=2026-10-04')
+    expect(window.location.hash).toBe('#/export?period=week&from=2026-10-04')
   })
 })

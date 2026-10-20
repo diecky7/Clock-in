@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { PrimaryButton, Screen, Section, Switch } from '../components/ui'
 import { shareOrDownload } from '../data/shareFile'
 import * as repo from '../data/repo'
-import { computeWeek } from '../domain/pay'
+import { computeRange, computeWeek } from '../domain/pay'
 import { today } from '../domain/today'
 import type { Employer } from '../domain/types'
-import { addDays, weekLabel, weekStartOf } from '../domain/weeks'
+import { addDays, weekStartOf } from '../domain/weeks'
+import { biweekAnchorFor, PERIOD_KINDS, PERIOD_WORDS, periodEnd, periodLabel, periodStart, shiftPeriod, type PeriodKind } from '../domain/periods'
 import { defaultOptions, type ReportOptions } from '../export/options'
 import { renderPdf } from '../export/pdf'
 import { buildReportModel } from '../export/report'
@@ -30,8 +31,10 @@ const TOGGLES: { group: string; items: { key: keyof ReportOptions; label: string
   },
 ]
 
-export default function Export({ week }: { week?: string }) {
-  const [weekStart, setWeekStart] = useState<string | null>(week ?? null)
+export default function Export({ week, period, from: fromParam }: { week?: string; period?: PeriodKind; from?: string }) {
+  const [kind, setKind] = useState<PeriodKind>(period ?? 'week')
+  const [from, setFrom] = useState<string | null>(null)
+  const [cfg, setCfg] = useState<{ weekStartsOn: number; anchor?: string } | null>(null)
   const [employers, setEmployers] = useState<Employer[]>([])
   const [summary, setSummary] = useState<WeekSummary | null>(null)
   // Nothing is remembered: every visit starts with everything on.
@@ -42,30 +45,56 @@ export default function Export({ week }: { week?: string }) {
 
   useEffect(() => {
     let alive = true
+    void Promise.all([repo.getSettings(), repo.listEmployers()]).then(([s, emps]) => {
+      if (!alive) return
+      const anchor = biweekAnchorFor(emps, s.lastEmployerId)
+      setCfg({ weekStartsOn: s.weekStartsOn, anchor })
+      setFrom(periodStart(period ?? 'week', fromParam ?? week ?? today(), s.weekStartsOn, anchor))
+    })
+    return () => {
+      alive = false
+    }
+  }, [week, period, fromParam])
+
+  const to = from ? periodEnd(kind, from) : null
+
+  useEffect(() => {
+    if (!from || !to || !cfg) return
+    let alive = true
+    setSummary(null)
     void (async () => {
-      const ws = week ?? weekStartOf(today(), (await repo.getSettings()).weekStartsOn)
-      const to = addDays(ws, 6)
+      // Whole work weeks around the period, so overtime is judged on the full week.
       const [emps, entries, expenses] = await Promise.all([
         repo.listEmployers(),
-        repo.listEntriesBetween(ws, to),
-        repo.listExpensesBetween(ws, to),
+        repo.listEntriesBetween(weekStartOf(from, cfg.weekStartsOn), addDays(weekStartOf(to, cfg.weekStartsOn), 6)),
+        repo.listExpensesBetween(from, to),
       ])
       if (!alive) return
-      setWeekStart(ws)
       setEmployers(emps)
-      setSummary(computeWeek({ weekStart: ws, entries, expenses, employers: emps }))
+      setSummary(
+        kind === 'week'
+          ? computeWeek({ weekStart: from, entries, expenses, employers: emps })
+          : computeRange({ from, to, weekStartsOn: cfg.weekStartsOn, entries, expenses, employers: emps }),
+      )
     })()
     return () => {
       alive = false
     }
-  }, [week])
+  }, [kind, from, to, cfg])
+
+  function changeKind(k: PeriodKind) {
+    if (k === kind || !from || !cfg) return
+    setKind(k)
+    setFrom(periodStart(k, from, cfg.weekStartsOn, cfg.anchor))
+    setError('')
+  }
 
   const names = useMemo(() => new Map(employers.map((e) => [e.id, e.name])), [employers])
   const rows = summary?.byEmployer ?? []
   const selected = rows.filter((r) => !excluded.has(r.employerId))
 
   async function share() {
-    if (!weekStart || busy) return
+    if (!from || busy) return
     if (selected.length === 0) {
       setError('Select at least one employer')
       return
@@ -75,10 +104,10 @@ export default function Export({ week }: { week?: string }) {
     try {
       const models = selected.flatMap((w) => {
         const employer = employers.find((e) => e.id === w.employerId)
-        return employer ? [buildReportModel(w, employer, weekStart, options)] : []
+        return employer ? [buildReportModel(w, employer, from, options, periodLabel(kind, from))] : []
       })
       const bytes = await renderPdf(models, repo.getPhoto)
-      const file = new File([bytes as BlobPart], `time-report-${weekStart}.pdf`, { type: 'application/pdf' })
+      const file = new File([bytes as BlobPart], `time-report-${kind === 'week' ? '' : `${kind}-`}${from}.pdf`, { type: 'application/pdf' })
       await shareOrDownload(file)
     } catch (err) {
       if ((err as { name?: string }).name !== 'AbortError') setError("Couldn't create the PDF. Please try again.")
@@ -90,11 +119,36 @@ export default function Export({ week }: { week?: string }) {
   const row = 'flex min-h-14 items-center justify-between gap-3 border-t border-border px-4 first:border-t-0'
 
   return (
-    <Screen title="Export week" back="/">
-      {weekStart && <p className="mt-2 text-lg font-medium text-muted">{weekLabel(weekStart)}</p>}
+    <Screen title="Export" back="/">
+      {from && (
+        <>
+          <div role="group" aria-label="Report period" className="mt-2 grid grid-cols-3 gap-1 rounded-xl bg-surface p-1">
+            {PERIOD_KINDS.map((p) => (
+              <button
+                key={p.kind}
+                type="button"
+                aria-pressed={kind === p.kind}
+                onClick={() => changeKind(p.kind)}
+                className={`min-h-10 rounded-lg text-base font-medium ${kind === p.kind ? 'bg-accent text-accent-fg' : 'text-muted'}`}
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+          <nav aria-label="Period" className="mt-2 flex items-center justify-between">
+            <button type="button" aria-label={`Previous ${PERIOD_WORDS[kind].unit}`} className="grid size-11 place-items-center rounded-full text-2xl" onClick={() => setFrom(shiftPeriod(kind, from, -1))}>
+              ‹
+            </button>
+            <span className="text-lg font-medium">{periodLabel(kind, from)}</span>
+            <button type="button" aria-label={`Next ${PERIOD_WORDS[kind].unit}`} className="grid size-11 place-items-center rounded-full text-2xl" onClick={() => setFrom(shiftPeriod(kind, from, 1))}>
+              ›
+            </button>
+          </nav>
+        </>
+      )}
 
       {summary && rows.length === 0 ? (
-        <p className="mt-8 text-center text-muted">Nothing to export for this week</p>
+        <p className="mt-8 text-center text-muted">Nothing to export for {PERIOD_WORDS[kind].this}</p>
       ) : (
         <Section title="Employers">
           {rows.map((r) => {

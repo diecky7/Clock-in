@@ -31,7 +31,14 @@ export default function App() {
     case '/expense/:id':
       return <ExpenseForm key={route.params.id} id={route.params.id} />
     case '/export':
-      return <Export key={route.params.week ?? 'now'} week={route.params.week} />
+      return (
+        <Export
+          key={`${route.params.period ?? ''}${route.params.from ?? route.params.week ?? 'now'}`}
+          week={route.params.week}
+          period={(['week', 'biweek', 'month'] as const).find((k) => k === route.params.period)}
+          from={route.params.from}
+        />
+      )
     default:
       return <Home />
   }
