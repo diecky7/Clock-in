@@ -56,6 +56,8 @@ export function buildReportModel(
   employer: Employer,
   weekStart: string,
   o: ReportOptions,
+  /** Shown under the employer name; defaults to the week ("Oct 4 – 10"). */
+  periodLabel = weekLabel(weekStart),
 ): ReportModel {
   const valueLines: ReportModel['valueLines'] = []
   if (o.regularPay) {
@@ -96,7 +98,7 @@ export function buildReportModel(
 
   const model: ReportModel = {
     employerName: employer.name,
-    weekLabel: weekLabel(weekStart),
+    weekLabel: periodLabel,
     hoursTotal: formatDuration(week.minutes),
     valueLines,
     totalCents: valueLines.length ? valueLines.reduce((s, l) => s + l.cents, 0) : null,

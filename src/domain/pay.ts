@@ -1,6 +1,6 @@
 import type { Employer, Expense, TimeEntry } from './types'
 import { shiftMinutes } from './time'
-import { weekDates } from './weeks'
+import { addDays, weekDates, weekStartOf } from './weeks'
 
 export const OVERTIME_THRESHOLD_MIN = 2400
 
@@ -104,6 +104,88 @@ export function computeWeek(input: {
     totalMinutes: sum(g => g.minutes),
     regularMinutes: sum(g => g.regularMinutes),
     overtimeMinutes: sum(g => g.overtimeMinutes),
+    regularCents, overtimeCents, expensesCents,
+    totalCents: regularCents + overtimeCents + expensesCents,
+    byEmployer,
+  }
+}
+
+/**
+ * Per-employer totals for any date range (two weeks, a month…). Overtime is judged on whole work weeks, so pass every
+ * entry of the weeks touching the range. A week fully inside counts its rounded weekly figures (same as the weekly
+ * report); a week cut by an edge counts only its shifts inside the range, with the overtime they really earned.
+ */
+export function computeRange(input: {
+  from: string
+  to: string
+  weekStartsOn: number
+  entries: TimeEntry[]
+  expenses: Expense[]
+  employers: Employer[]
+}): WeekSummary {
+  const { from, to } = input
+  const inRange = (d: string) => d >= from && d <= to
+  const groups = new Map<string, EmployerWeek & { regularExact: number; overtimeExact: number }>()
+  const group = (id: string) => {
+    let g = groups.get(id)
+    if (!g) {
+      g = {
+        employerId: id, minutes: 0, regularMinutes: 0, overtimeMinutes: 0, regularCents: 0, overtimeCents: 0,
+        expensesCents: 0, entries: [], expenses: [], splits: [], regularExact: 0, overtimeExact: 0,
+      }
+      groups.set(id, g)
+    }
+    return g
+  }
+  for (let ws = weekStartOf(from, input.weekStartsOn); ws <= to; ws = addDays(ws, 7)) {
+    const w = computeWeek({ weekStart: ws, entries: input.entries, expenses: [], employers: input.employers })
+    const whole = ws >= from && addDays(ws, 6) <= to
+    for (const wg of w.byEmployer) {
+      const ids = new Set(wg.splits.filter((s) => whole || inRange(s.date)).map((s) => s.entryId))
+      if (ids.size === 0) continue
+      const g = group(wg.employerId)
+      g.entries.push(...wg.entries.filter((e) => ids.has(e.id)))
+      for (const s of wg.splits)
+        if (ids.has(s.entryId)) {
+          g.splits.push(s)
+          g.minutes += s.regularMinutes + s.overtimeMinutes
+          g.regularMinutes += s.regularMinutes
+          g.overtimeMinutes += s.overtimeMinutes
+          if (!whole) {
+            g.regularExact += s.regularExact
+            g.overtimeExact += s.overtimeExact
+          }
+        }
+      if (whole) {
+        g.regularCents += wg.regularCents
+        g.overtimeCents += wg.overtimeCents
+      }
+    }
+  }
+  for (const x of input.expenses)
+    if (inRange(x.date)) {
+      const g = group(x.employerId)
+      g.expenses.push(x)
+      g.expensesCents += x.amountCents
+    }
+  const order = [...input.employers.map((e) => e.id), ...groups.keys()]
+  const byEmployer: EmployerWeek[] = [...new Set(order)]
+    .filter((id) => groups.has(id))
+    .map((id) => {
+      const { regularExact, overtimeExact, ...g } = groups.get(id)!
+      g.regularCents += Math.round(regularExact)
+      g.overtimeCents += Math.round(overtimeExact)
+      g.entries.sort((a, b) => a.start.localeCompare(b.start))
+      return g
+    })
+  const sum = (f: (g: EmployerWeek) => number) => byEmployer.reduce((s, g) => s + f(g), 0)
+  const regularCents = sum((g) => g.regularCents)
+  const overtimeCents = sum((g) => g.overtimeCents)
+  const expensesCents = sum((g) => g.expensesCents)
+  return {
+    totalMinutes: sum((g) => g.minutes),
+    regularMinutes: sum((g) => g.regularMinutes),
+    overtimeMinutes: sum((g) => g.overtimeMinutes),
     regularCents, overtimeCents, expensesCents,
     totalCents: regularCents + overtimeCents + expensesCents,
     byEmployer,
