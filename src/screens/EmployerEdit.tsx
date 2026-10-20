@@ -120,7 +120,7 @@ export default function EmployerEdit({ id }: { id: string }) {
             <button type="button" onClick={() => setConfirmArchive(false)} className="min-h-11 flex-1 rounded-full border border-border">
               Cancel
             </button>
-            <button type="button" onClick={() => void archive()} className="min-h-11 flex-1 rounded-full bg-danger font-medium text-white">
+            <button type="button" onClick={() => void archive()} className="min-h-11 flex-1 rounded-full bg-danger font-medium text-accent-fg">
               Archive
             </button>
           </div>

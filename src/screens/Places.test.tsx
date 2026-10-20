@@ -164,4 +164,24 @@ describe('Places', () => {
     await waitFor(async () => expect((await repo.getSettings()).recentPlaces[0].detail?.zip).toBe('01803'))
     vi.unstubAllGlobals()
   })
+
+  it('deletes an address after asking; past entries keep it and it stays gone until used again', async () => {
+    await repo.saveEmployer({ id: 'e', name: 'A', overtimeEnabled: false, archived: false, rates: [{ from: '2025-01-01', cents: 3000 }] })
+    await repo.saveEntry({
+      id: 't', employerId: 'e', start: '2025-10-06T07:00', end: '2025-10-06T15:00', breakMin: 0, rateCents: 3000,
+      place: { lat: 1, lon: 2, label: '12 Main St, Framingham, MA' },
+    })
+    const user = userEvent.setup()
+    const { unmount } = render(<Places />)
+    await user.click(await screen.findByRole('button', { name: 'Directions to 12 Main St, Framingham, MA' }))
+    await user.click(screen.getByRole('button', { name: 'Delete address' }))
+    await user.click(screen.getByRole('button', { name: 'Yes, delete' }))
+    expect(await screen.findByText('No addresses yet')).toBeInTheDocument()
+    expect((await repo.getEntry('t'))?.place?.label).toBe('12 Main St, Framingham, MA')
+    await waitFor(async () => expect(await repo.listAllPlaces()).toEqual([]))
+    unmount()
+
+    await repo.addRecentPlace({ lat: 1, lon: 2, label: '12 Main Street, Framingham, MA' })
+    expect((await repo.listAllPlaces()).map((p) => p.label)).toEqual(['12 Main St, Framingham, MA'])
+  })
 })

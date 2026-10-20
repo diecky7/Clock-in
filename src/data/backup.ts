@@ -83,7 +83,9 @@ const validSettings = (r: unknown): r is Settings =>
   isArr(r.schedule) && r.schedule.length === 7 && r.schedule.every(validDay) &&
   isArr(r.recentPlaces) && r.recentPlaces.every(validPlace) &&
   (r.nearbyFeet === undefined || (isNum(r.nearbyFeet) && r.nearbyFeet >= 0)) &&
-  (r.lastEmployerId === undefined || isStr(r.lastEmployerId))
+  (r.lastEmployerId === undefined || isStr(r.lastEmployerId)) &&
+  (r.homePeriod === undefined || r.homePeriod === 'week' || r.homePeriod === 'biweek' || r.homePeriod === 'month') &&
+  (r.hiddenPlaces === undefined || (isArr(r.hiddenPlaces) && r.hiddenPlaces.every(isStr)))
 const validPhoto = (r: unknown): r is PhotoJson =>
   isObj(r) && isStr(r.id) && isStr(r.type) && isStr(r.data)
 

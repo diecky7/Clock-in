@@ -7,6 +7,15 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.4.0',
+    date: '2026-10-20',
+    changes: [
+      'Home screen: tap the dates to show it weekly, biweekly or monthly; the arrows and swipe move by that period',
+      'Delete an address from Places (past entries keep it)',
+      'Monthly totals keep overtime earned in a week that crosses the month edge',
+    ],
+  },
+  {
     version: '1.3.2',
     date: '2026-10-09',
     changes: ['Hours are shown as hours and minutes (7h 50m) everywhere, including the PDF, instead of decimals'],

@@ -105,8 +105,25 @@ export async function saveSettings(s: Settings): Promise<void> {
 }
 export async function addRecentPlace(p: Place): Promise<void> {
   const s = await getSettings()
-  const rest = s.recentPlaces.filter((x) => placeKey(x.label) !== placeKey(p.label))
-  await saveSettings({ ...s, recentPlaces: [{ ...p, label: shortAddress(p.label) }, ...rest] })
+  const key = placeKey(p.label)
+  const rest = s.recentPlaces.filter((x) => placeKey(x.label) !== key)
+  // Using a deleted address again brings it back.
+  const hiddenPlaces = s.hiddenPlaces?.filter((k) => k !== key)
+  await saveSettings({ ...s, recentPlaces: [{ ...p, label: shortAddress(p.label) }, ...rest], hiddenPlaces })
+}
+
+/**
+ * Removes an address from the address book, the address search and the "near a saved address" prompt.
+ * Past entries keep it, so hours and PDFs don't change.
+ */
+export async function deletePlace(label: string): Promise<void> {
+  const s = await getSettings()
+  const key = placeKey(label)
+  await saveSettings({
+    ...s,
+    recentPlaces: s.recentPlaces.filter((x) => placeKey(x.label) !== key),
+    hiddenPlaces: [...(s.hiddenPlaces ?? []).filter((k) => k !== key), key],
+  })
 }
 
 /** Remembers the full lookup details of an address (also adds it to the address book if only entries knew it). */
@@ -126,7 +143,7 @@ export async function savePlaceDetail(p: Place, detail: NonNullable<Place['detai
  */
 export async function listAllPlaces(): Promise<Place[]> {
   const [settings, entries] = await Promise.all([getSettings(), (await getDb()).getAll(STORE_ENTRIES)])
-  const seen = new Set<string>()
+  const seen = new Set<string>(settings.hiddenPlaces ?? [])
   const all: Place[] = []
   const add = (p: Place | undefined) => {
     if (p && !seen.has(placeKey(p.label))) {

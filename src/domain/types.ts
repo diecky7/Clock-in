@@ -48,4 +48,8 @@ export interface Settings {
   nearbyFeet?: number
   /** Employer of the last saved entry or expense; pre-selected for the next one. */
   lastEmployerId?: string
+  /** Period shown on the home screen. Default week. */
+  homePeriod?: 'week' | 'biweek' | 'month'
+  /** Addresses removed from the address book (placeKey), so past entries don't bring them back. */
+  hiddenPlaces?: string[]
 }

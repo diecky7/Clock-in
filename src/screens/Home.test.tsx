@@ -98,6 +98,26 @@ describe('Home', () => {
     expect(await screen.findByText('Oct 4 – 10')).toBeInTheDocument()
   })
 
+  it('the date bar switches to two weeks or a month, and remembers it', async () => {
+    await seed()
+    await repo.saveEntry(shift('t9', '20', '15:00', 3400)) // Oct 20, a later week
+    const user = userEvent.setup()
+    render(<Home initialDate="2026-10-07" />)
+    await screen.findByText('$1,415.50')
+    await user.click(screen.getByRole('button', { name: 'Oct 4 – 10, change period' }))
+    await user.click(screen.getByRole('button', { name: /Monthly/ }))
+    expect(await screen.findByRole('button', { name: 'October 2026, change period' })).toBeInTheDocument()
+    expect(await screen.findByText('$1,687.50')).toBeInTheDocument() // + 8 h at $34
+    expect(within(screen.getByRole('list', { name: 'This month' })).getAllByRole('listitem')).toHaveLength(7)
+    await user.click(screen.getByRole('button', { name: 'Previous month' }))
+    expect(await screen.findByText('Nothing logged this month')).toBeInTheDocument()
+    expect((await repo.getSettings()).homePeriod).toBe('month')
+
+    await user.click(screen.getByRole('button', { name: 'September 2026, change period' }))
+    await user.click(screen.getByRole('button', { name: /Biweekly/ }))
+    expect(await screen.findByRole('button', { name: 'Aug 23 – Sep 5, change period' })).toBeInTheDocument()
+  })
+
   it('holding a row opens Edit/Delete; Delete asks to confirm and removes the row', async () => {
     await seed(false)
     const user = userEvent.setup()
