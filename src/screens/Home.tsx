@@ -231,6 +231,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
     setConfirming(false)
   }
   const iconBtn = 'grid size-11 place-items-center rounded-full'
+  const pill = 'bg-surface px-3.5 text-base font-semibold'
 
   return (
     <main aria-label="Time clock" {...swipe.bind}
@@ -259,34 +260,37 @@ export default function Home({ initialDate }: { initialDate?: string }) {
       </header>
       <PersistenceNote />
 
-      {activeEmployers(employers).length > 0 && (
-        <div className="mt-1 flex">
-          <Dropdown
-            value={who}
-            options={[
-              { value: ALL_EMPLOYERS, label: 'All employers' },
-              ...activeEmployers(employers).map((e) => ({ value: e.id, label: e.name })),
-            ]}
-            onChange={changeEmployer}
-            ariaLabel={`Employer: ${whoName}, change`}
-            menuLabel="Employer"
-            className="-ml-1 bg-surface px-4 text-lg font-semibold"
-            buttonLabel={<span className="truncate">{whoName}</span>}
-          />
+      <div className="mt-2 flex items-center gap-2">
+        {activeEmployers(employers).length > 0 && (
+          <div className="min-w-0 shrink">
+            <Dropdown
+              value={who}
+              options={[
+                { value: ALL_EMPLOYERS, label: 'All employers' },
+                ...activeEmployers(employers).map((e) => ({ value: e.id, label: e.name })),
+              ]}
+              onChange={changeEmployer}
+              ariaLabel={`Employer: ${whoName}, change`}
+              menuLabel="Employer"
+              className={pill}
+              buttonLabel={<span className="truncate">{who === ALL_EMPLOYERS ? 'All' : whoName}</span>}
+            />
+          </div>
+        )}
+        <div className="shrink-0">
+          <PeriodPicker kind={kind} label={periodLabel(kind, from)} onChange={changeKind} className={pill} />
         </div>
-      )}
+        <nav aria-label="Period" className="ml-auto flex shrink-0 rounded-full bg-surface">
+          <button type="button" aria-label={`Previous ${words.unit}`} className="grid size-11 place-items-center rounded-full text-2xl" onClick={() => setFrom(shiftPeriod(kind, from, -1))}>
+            ‹
+          </button>
+          <button type="button" aria-label={`Next ${words.unit}`} className="grid size-11 place-items-center rounded-full text-2xl" onClick={() => setFrom(shiftPeriod(kind, from, 1))}>
+            ›
+          </button>
+        </nav>
+      </div>
 
       <div style={swipe.style} className="min-h-[60dvh]">
-      <nav aria-label="Period" className="mt-2 flex items-center justify-between">
-        <button type="button" aria-label={`Previous ${words.unit}`} className={`${iconBtn} text-2xl`} onClick={() => setFrom(shiftPeriod(kind, from, -1))}>
-          ‹
-        </button>
-        <PeriodPicker kind={kind} label={periodLabel(kind, from)} onChange={changeKind} />
-        <button type="button" aria-label={`Next ${words.unit}`} className={`${iconBtn} text-2xl`} onClick={() => setFrom(shiftPeriod(kind, from, 1))}>
-          ›
-        </button>
-      </nav>
-
       <section aria-label="Balance" className="mt-10 text-center">
         <p className="text-6xl font-semibold tabular-nums tracking-tight">{formatUSD(summary.totalCents)}</p>
         <p className="mt-2 text-base text-muted">{detail}</p>

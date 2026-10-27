@@ -7,6 +7,11 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.7.1',
+    date: '2026-10-27',
+    changes: ['Employer, dates and arrows sit side by side on one line at the top of the home screen'],
+  },
+  {
     version: '1.7.0',
     date: '2026-10-27',
     changes: [
