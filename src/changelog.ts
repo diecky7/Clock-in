@@ -7,6 +7,14 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.6.1',
+    date: '2026-10-27',
+    changes: [
+      'The "saved address nearby" question opens in its own box, showing the saved address and the one found',
+      'GPS coordinates no longer get a stray space ("-71. 41010")',
+    ],
+  },
+  {
     version: '1.6.0',
     date: '2026-10-20',
     changes: [

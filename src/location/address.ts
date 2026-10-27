@@ -71,7 +71,8 @@ export function shortAddress(label: string): string {
   return parts
     .map((seg, i) => {
       if (i === 0 && /^\d/.test(seg)) return abbreviateStreet(seg)
-      const m = /^(.*?)\s*\b(\d{5})(?:-\d{4})?$/.exec(seg)
+      // A ZIP is a separate word ("MA 01702"), never the tail of a number like the "41010" in "-71.41010".
+      const m = /^(.*?)(?:^|\s+)(\d{5})(?:-\d{4})?$/.exec(seg)
       const text = (m ? m[1] : seg).trim()
       return [STATES[text.toLowerCase()] ?? text, m?.[2]].filter(Boolean).join(' ')
     })

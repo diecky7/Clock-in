@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import DateTimeField from '../components/DateTimeField'
 import EmployerPicker from '../components/EmployerPicker'
+import Modal from '../components/Modal'
 import { Field, PrimaryButton, Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
 import { defaultEmployerId } from '../domain/employers'
@@ -318,29 +319,6 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
         >
           {gpsBusy ? 'Finding you…' : 'Use my location'}
         </button>
-        {nearby && (
-          <div role="alert" className="mt-3 rounded-2xl bg-surface p-4">
-            <p className="text-sm">
-              You're about {formatDistance(nearby.ft)} from <span className="font-medium">{shortAddress(nearby.existing.label)}</span>. Which address should this entry use?
-            </p>
-            <div className="mt-3 grid gap-2">
-              <button
-                type="button"
-                className="min-h-12 rounded-full bg-accent px-4 font-semibold text-accent-fg"
-                onClick={() => setPlaceByUser(nearby.existing)}
-              >
-                Use saved address
-              </button>
-              <button
-                type="button"
-                className="min-h-12 rounded-full border border-border bg-bg px-4 font-medium"
-                onClick={() => setPlaceByUser(nearby.found)}
-              >
-                Use new address
-              </button>
-            </div>
-          </div>
-        )}
         {locNote && (
           <p role="status" className="mt-2 text-sm text-muted">
             {locNote}
@@ -387,6 +365,40 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
           {saveLabel}
         </PrimaryButton>
       </div>
+      {nearby && (
+        <Modal label="Saved address nearby" onClose={() => setNearby(null)}>
+          <h2 className="px-2 pt-1 text-center text-xl font-semibold">Saved address nearby</h2>
+          <p className="mt-2 px-2 text-center text-base text-muted">
+            You're about {formatDistance(nearby.ft)} from an address you already have. Which one should this entry use?
+          </p>
+          <div className="mt-4 overflow-hidden rounded-2xl bg-bg">
+            <div className="border-b border-border px-4 py-3">
+              <p className="text-sm text-muted">Saved</p>
+              <p className="text-base font-medium">{shortAddress(nearby.existing.label)}</p>
+            </div>
+            <div className="px-4 py-3">
+              <p className="text-sm text-muted">Found here</p>
+              <p className="text-base">{shortAddress(nearby.found.label)}</p>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-2">
+            <button
+              type="button"
+              className="min-h-12 rounded-full bg-accent px-4 font-semibold text-accent-fg"
+              onClick={() => setPlaceByUser(nearby.existing)}
+            >
+              Use saved address
+            </button>
+            <button
+              type="button"
+              className="min-h-12 rounded-full border border-border bg-bg px-4 font-medium"
+              onClick={() => setPlaceByUser(nearby.found)}
+            >
+              Use new address
+            </button>
+          </div>
+        </Modal>
+      )}
     </Screen>
   )
 }
