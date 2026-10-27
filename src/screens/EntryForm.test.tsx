@@ -29,11 +29,22 @@ beforeEach(async () => {
 async function setup(opts: { id?: string } = {}) {
   await repo.saveEmployer(acme)
   await repo.saveEmployer(bolt)
+  // "All employers" on the home screen: the form offers the choice.
+  await repo.saveSettings({ ...(await repo.getSettings()), homeEmployer: 'all' })
   render(<EntryForm id={opts.id} initialDate="2026-10-05" />)
   await screen.findByRole('radio', { name: 'Acme' })
 }
 
 describe('EntryForm', () => {
+  it('a new entry goes to the employer chosen on the home screen, without asking', async () => {
+    await repo.saveEmployer(acme)
+    await repo.saveEmployer(bolt)
+    await repo.saveSettings({ ...(await repo.getSettings()), homeEmployer: bolt.id })
+    render(<EntryForm initialDate="2026-10-05" />)
+    expect(await screen.findByText('Bolt')).toBeInTheDocument()
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+  })
+
   it('defaults In, Out and Break from the schedule of the chosen day', async () => {
     await setup()
     expect(screen.getByText('Mon, Oct 5 · 7:00 AM')).toBeInTheDocument()

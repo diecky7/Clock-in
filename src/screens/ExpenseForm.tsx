@@ -3,7 +3,7 @@ import EmployerPicker from '../components/EmployerPicker'
 import PhotoPicker from '../components/PhotoPicker'
 import { Field, PrimaryButton, Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
-import { defaultEmployerId } from '../domain/employers'
+import { ALL_EMPLOYERS, defaultEmployerId, homeEmployerFor } from '../domain/employers'
 import DateTimeField from '../components/DateTimeField'
 import MoneyInput from '../components/MoneyInput'
 import { formatUSD } from '../domain/money'
@@ -21,6 +21,8 @@ export default function ExpenseForm({ id, initialDate }: { id?: string; initialD
   const [existing, setExisting] = useState<Expense | null>(null)
 
   const [employerId, setEmployerId] = useState('')
+  // A new one goes to the employer chosen on the home screen; the choice is only offered under "All employers".
+  const [fixedEmployer, setFixedEmployer] = useState(false)
   const [description, setDescription] = useState('')
   const [cents, setCents] = useState<number | null>(null)
   const [date, setDate] = useState(initialDate ?? today())
@@ -55,7 +57,9 @@ export default function ExpenseForm({ id, initialDate }: { id?: string; initialD
         setDate(x.date)
         setPhotoIds(x.photoIds)
       } else {
-        setEmployerId(defaultEmployerId(all, s.lastEmployerId))
+        const home = homeEmployerFor(all, s)
+        setFixedEmployer(home !== ALL_EMPLOYERS)
+        setEmployerId(home !== ALL_EMPLOYERS ? home : defaultEmployerId(all, s.lastEmployerId))
       }
       setReady(true)
     })()
@@ -133,9 +137,15 @@ export default function ExpenseForm({ id, initialDate }: { id?: string; initialD
 
   return (
     <Screen title={title} back="/">
-      <div className="mt-2">
-        <EmployerPicker employers={employers} value={employerId} onChange={setEmployerId} />
-      </div>
+      {fixedEmployer ? (
+        <p className="mt-1 text-base text-muted">
+          For <span className="font-semibold text-fg">{employers.find((e) => e.id === employerId)?.name ?? 'Employer'}</span>
+        </p>
+      ) : (
+        <div className="mt-2">
+          <EmployerPicker employers={employers} value={employerId} onChange={setEmployerId} />
+        </div>
+      )}
 
       <Field label="Description" htmlFor="x-desc">
         <input

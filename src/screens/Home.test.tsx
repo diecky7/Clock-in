@@ -74,7 +74,7 @@ describe('Home', () => {
     await seed(false)
     render(<Home initialDate="2026-10-07" />)
     const list = await screen.findByRole('list', { name: 'This week' })
-    const days = within(list).getAllByRole('listitem').map((li) => li.textContent?.match(/^\w+ \d+/)?.[0])
+    const days = within(list).getAllByRole('listitem').map((li) => li.querySelector('span')?.textContent)
     expect(days).toEqual(['Fri 9', 'Thu 8', 'Wed 7', 'Tue 6', 'Mon 5'])
   })
 
@@ -123,6 +123,34 @@ describe('Home', () => {
     await repo.saveSettings({ ...(await repo.getSettings()), homePeriod: 'biweek' })
     render(<Home initialDate="2026-10-07" />)
     expect(await screen.findByRole('button', { name: 'Oct 1 – 14, change period' })).toBeInTheDocument()
+  })
+
+  it('the employer menu shows one employer or all, opens on the last used, and remembers the choice', async () => {
+    await seed()
+    await repo.saveEmployer({ ...acme, id: 'e2', name: 'Bay', rates: [{ from: '2026-01-01', cents: 2000 }] })
+    await repo.saveEntry({ id: 'b1', employerId: 'e2', start: '2026-10-06T07:00', end: '2026-10-06T12:00', breakMin: 0, rateCents: 2000 })
+    await repo.rememberEmployer('e2')
+    const user = userEvent.setup()
+    const { unmount } = render(<Home initialDate="2026-10-07" />)
+    // Opens on Bay, the one used last: only its 5 h at $20.
+    expect(await screen.findByRole('button', { name: 'Employer: Bay, change' })).toBeInTheDocument()
+    expect(await screen.findByText('$100.00')).toBeInTheDocument()
+    expect(within(screen.getByRole('list', { name: 'This week' })).getAllByRole('listitem')).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: 'Employer: Bay, change' }))
+    await user.click(screen.getByRole('button', { name: 'All employers' }))
+    expect(await screen.findByText('$1,515.50')).toBeInTheDocument() // $1,415.50 + $100
+    await waitFor(async () => expect((await repo.getSettings()).homeEmployer).toBe('all'))
+
+    await user.click(screen.getByRole('button', { name: 'Employer: All employers, change' }))
+    await user.click(screen.getByRole('button', { name: 'Acme' }))
+    expect(await screen.findByText('$1,415.50')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Export' }))
+    expect(window.location.hash).toBe('#/export?period=week&from=2026-10-04&employer=e1')
+    unmount()
+
+    render(<Home initialDate="2026-10-07" />)
+    expect(await screen.findByRole('button', { name: 'Employer: Acme, change' })).toBeInTheDocument()
   })
 
   it('holding a row opens Edit/Delete; Delete asks to confirm and removes the row', async () => {

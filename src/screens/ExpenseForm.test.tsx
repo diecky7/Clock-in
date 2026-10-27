@@ -22,6 +22,7 @@ beforeEach(async () => {
 
 async function setup(id?: string) {
   await repo.saveEmployer(acme)
+  await repo.saveSettings({ ...(await repo.getSettings()), homeEmployer: 'all' })
   render(<ExpenseForm id={id} initialDate="2026-10-07" />)
   await screen.findByRole('radio', { name: 'Acme' })
 }
@@ -31,6 +32,7 @@ describe('ExpenseForm', () => {
     await repo.saveEmployer(acme)
     await repo.saveEmployer({ ...acme, id: 'e2', name: 'Bay' })
     await repo.rememberEmployer('e2')
+    await repo.saveSettings({ ...(await repo.getSettings()), homeEmployer: 'all' })
     const user = userEvent.setup()
     render(<ExpenseForm initialDate="2026-10-07" />)
     expect(await screen.findByRole('radio', { name: 'Bay' })).toBeChecked()
