@@ -33,10 +33,11 @@ export default function App() {
     case '/export':
       return (
         <Export
-          key={`${route.params.period ?? ''}${route.params.from ?? route.params.week ?? 'now'}`}
+          key={`${route.params.period ?? ''}${route.params.from ?? route.params.week ?? 'now'}${route.params.employer ?? ''}`}
           week={route.params.week}
           period={(['week', 'biweek', 'month'] as const).find((k) => k === route.params.period)}
           from={route.params.from}
+          employer={route.params.employer}
         />
       )
     default:

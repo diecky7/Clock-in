@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PrimaryButton, Screen, Section, Switch } from '../components/ui'
 import { shareOrDownload } from '../data/shareFile'
 import * as repo from '../data/repo'
@@ -31,7 +31,18 @@ const TOGGLES: { group: string; items: { key: keyof ReportOptions; label: string
   },
 ]
 
-export default function Export({ week, period, from: fromParam }: { week?: string; period?: PeriodKind; from?: string }) {
+export default function Export({
+  week,
+  period,
+  from: fromParam,
+  employer: only,
+}: {
+  week?: string
+  period?: PeriodKind
+  from?: string
+  /** Open with just this employer ticked (the one chosen on the home screen). */
+  employer?: string
+}) {
   const [kind, setKind] = useState<PeriodKind>(period ?? 'week')
   const [from, setFrom] = useState<string | null>(null)
   const [cfg, setCfg] = useState<{ weekStartsOn: number; anchor?: string } | null>(null)
@@ -42,6 +53,7 @@ export default function Export({ week, period, from: fromParam }: { week?: strin
   const [excluded, setExcluded] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const preset = useRef(false)
 
   useEffect(() => {
     let alive = true
@@ -71,6 +83,10 @@ export default function Export({ week, period, from: fromParam }: { week?: strin
       ])
       if (!alive) return
       setEmployers(emps)
+      if (only && !preset.current) {
+        preset.current = true
+        setExcluded(new Set(emps.filter((e) => e.id !== only).map((e) => e.id)))
+      }
       setSummary(
         kind === 'week'
           ? computeWeek({ weekStart: from, entries, expenses, employers: emps })
@@ -80,7 +96,7 @@ export default function Export({ week, period, from: fromParam }: { week?: strin
     return () => {
       alive = false
     }
-  }, [kind, from, to, cfg])
+  }, [kind, from, to, cfg, only])
 
   function changeKind(k: PeriodKind) {
     if (k === kind || !from || !cfg) return

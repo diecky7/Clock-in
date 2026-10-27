@@ -7,6 +7,15 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.7.0',
+    date: '2026-10-27',
+    changes: [
+      'Employer menu on the home screen: one employer or All employers; it opens on the one used last',
+      'New entries and expenses go to the employer chosen there (the choice is offered only under All employers)',
+      'With one employer chosen, each row shows the shift times; Export opens with that employer ticked',
+    ],
+  },
+  {
     version: '1.6.1',
     date: '2026-10-27',
     changes: [

@@ -52,6 +52,8 @@ export interface Settings {
   lastEmployerId?: string
   /** Period shown on the home screen. Default week. */
   homePeriod?: 'week' | 'biweek' | 'month'
+  /** Employer chosen on the home screen ('all' for every employer). New entries and expenses go to it. */
+  homeEmployer?: string
   /** Addresses removed from the address book (placeKey), so past entries don't bring them back. */
   hiddenPlaces?: string[]
 }

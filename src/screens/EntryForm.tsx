@@ -4,7 +4,7 @@ import EmployerPicker from '../components/EmployerPicker'
 import Modal from '../components/Modal'
 import { Field, PrimaryButton, Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
-import { defaultEmployerId } from '../domain/employers'
+import { ALL_EMPLOYERS, defaultEmployerId, homeEmployerFor } from '../domain/employers'
 import { rateOn } from '../domain/rates'
 import { formatDuration, shiftMinutes, validateShift } from '../domain/time'
 import { today } from '../domain/today'
@@ -44,6 +44,8 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
   const [existing, setExisting] = useState<TimeEntry | null>(null)
 
   const [employerId, setEmployerId] = useState('')
+  // A new one goes to the employer chosen on the home screen; the choice is only offered under "All employers".
+  const [fixedEmployer, setFixedEmployer] = useState(false)
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
   const [breakText, setBreakText] = useState('0')
@@ -87,7 +89,9 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
         setOutTouched(true)
       } else {
         const d = defaultsFor(initialDate ?? today(), s)
-        setEmployerId(defaultEmployerId(all, s.lastEmployerId))
+        const home = homeEmployerFor(all, s)
+        setFixedEmployer(home !== ALL_EMPLOYERS)
+        setEmployerId(home !== ALL_EMPLOYERS ? home : defaultEmployerId(all, s.lastEmployerId))
         setStart(d.start)
         setEnd(d.end)
         setBreakText(String(d.breakMin))
@@ -252,9 +256,15 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
 
   return (
     <Screen title={title} back="/">
-      <div className="mt-2">
-        <EmployerPicker employers={employers} value={employerId} onChange={setEmployerId} />
-      </div>
+      {fixedEmployer ? (
+        <p className="mt-1 text-base text-muted">
+          For <span className="font-semibold text-fg">{employers.find((e) => e.id === employerId)?.name ?? 'Employer'}</span>
+        </p>
+      ) : (
+        <div className="mt-2">
+          <EmployerPicker employers={employers} value={employerId} onChange={setEmployerId} />
+        </div>
+      )}
 
       <DateTimeField label="In" value={start} onChange={changeStart} error={errors.start} />
       <DateTimeField

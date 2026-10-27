@@ -9,13 +9,15 @@ import NewChoiceSheet from '../components/NewChoiceSheet'
 import * as repo from '../data/repo'
 import { formatUSD } from '../domain/money'
 import { computeWeek } from '../domain/pay'
-import { formatDuration, shiftMinutes } from '../domain/time'
+import { formatClock, formatDuration, shiftMinutes } from '../domain/time'
 import { today } from '../domain/today'
 import type { Employer, Expense, TimeEntry } from '../domain/types'
 import { addDays, weekStartOf } from '../domain/weeks'
 import { biweekAnchorFor, PERIOD_WORDS, periodEnd, periodLabel, periodStart, shiftPeriod, type PeriodKind } from '../domain/periods'
 import { summarizePeriod } from '../domain/summary'
 import PeriodPicker from '../components/PeriodPicker'
+import Dropdown from '../components/Dropdown'
+import { ALL_EMPLOYERS, activeEmployers, homeEmployerFor } from '../domain/employers'
 import { navigate } from '../router'
 
 const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -45,7 +47,7 @@ function RowButton({ row, onOpen }: { row: Row; onOpen: () => void }) {
       }}
       className="flex min-h-14 w-full select-none items-center gap-3 px-4 text-left [-webkit-touch-callout:none]"
     >
-      <span className="w-14 shrink-0 text-muted">{dayLabel(row.date)}</span>
+      <span className="w-16 shrink-0 whitespace-nowrap text-muted">{dayLabel(row.date)}</span>
       {row.kind === 'entry' ? (
         <>
           <span className="flex-1 truncate">{row.employer}</span>
@@ -64,11 +66,18 @@ function RowButton({ row, onOpen }: { row: Row; onOpen: () => void }) {
   )
 }
 
+/** Two-week pay periods: the chosen employer's own, or for all employers the usual pick. */
+function anchorFor(employers: Employer[], who: string, lastEmployerId?: string): string | undefined {
+  if (who === ALL_EMPLOYERS) return biweekAnchorFor(employers, lastEmployerId)
+  return employers.find((e) => e.id === who)?.biweeklyStart || undefined
+}
+
 export default function Home({ initialDate }: { initialDate?: string }) {
   const [kind, setKind] = useState<PeriodKind>('week')
   const [from, setFrom] = useState<string | null>(null)
   const [weekStartsOn, setWeekStartsOn] = useState(0)
-  const [anchor, setAnchor] = useState<string | undefined>(undefined)
+  const [who, setWho] = useState<string>(ALL_EMPLOYERS)
+  const [lastEmployerId, setLastEmployerId] = useState<string | undefined>(undefined)
   const [employers, setEmployers] = useState<Employer[]>([])
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -82,17 +91,20 @@ export default function Home({ initialDate }: { initialDate?: string }) {
     void Promise.all([repo.getSettings(), repo.listEmployers()]).then(([s, emps]) => {
       if (!alive) return
       const k = s.homePeriod ?? 'week'
-      const a = biweekAnchorFor(emps, s.lastEmployerId)
+      const w = homeEmployerFor(emps, s)
       setKind(k)
       setWeekStartsOn(s.weekStartsOn)
-      setAnchor(a)
-      setFrom(periodStart(k, initialDate ?? today(), s.weekStartsOn, a))
+      setEmployers(emps)
+      setWho(w)
+      setLastEmployerId(s.lastEmployerId)
+      setFrom(periodStart(k, initialDate ?? today(), s.weekStartsOn, anchorFor(emps, w, s.lastEmployerId)))
     })
     return () => {
       alive = false
     }
   }, [initialDate])
 
+  const anchor = anchorFor(employers, who, lastEmployerId)
   const to = from ? periodEnd(kind, from) : null
   const key = from ? `${kind}:${from}` : null
 
@@ -127,6 +139,13 @@ export default function Home({ initialDate }: { initialDate?: string }) {
 
   const swipe = useWeekSwipe((dir) => setFrom((f) => (f ? shiftPeriod(kind, f, dir) : f)))
 
+  function changeEmployer(w: string) {
+    if (w === who) return
+    setWho(w)
+    if (from && kind === 'biweek') setFrom(periodStart('biweek', from, weekStartsOn, anchorFor(employers, w, lastEmployerId)))
+    void repo.getSettings().then((s) => repo.saveSettings({ ...s, homeEmployer: w }))
+  }
+
   function changeKind(k: PeriodKind) {
     if (k === kind || !from) return
     // Keep the dates in view: the new period is the one holding the first day of the old one.
@@ -134,6 +153,11 @@ export default function Home({ initialDate }: { initialDate?: string }) {
     setFrom(periodStart(k, from, weekStartsOn, anchor))
     void repo.getSettings().then((s) => repo.saveSettings({ ...s, homePeriod: k }))
   }
+
+  const mine = useMemo(
+    () => (who === ALL_EMPLOYERS ? { entries, expenses } : { entries: entries.filter((e) => e.employerId === who), expenses: expenses.filter((x) => x.employerId === who) }),
+    [who, entries, expenses],
+  )
 
   const summary = useMemo(
     () =>
@@ -144,16 +168,16 @@ export default function Home({ initialDate }: { initialDate?: string }) {
               earnedCents: regularCents + overtimeCents,
               expensesCents,
               totalCents,
-            }))(computeWeek({ weekStart: from, entries, expenses, employers }))
-          : summarizePeriod({ from, to, weekStartsOn, entries, expenses, employers })
+            }))(computeWeek({ weekStart: from, entries: mine.entries, expenses: mine.expenses, employers }))
+          : summarizePeriod({ from, to, weekStartsOn, entries: mine.entries, expenses: mine.expenses, employers })
         : null,
-    [kind, from, to, weekStartsOn, entries, expenses, employers],
+    [kind, from, to, weekStartsOn, mine, employers],
   )
 
   // Shifts loaded for the whole weeks around the period; list only the ones inside it.
   const shown = useMemo(
-    () => (from && to ? entries.filter((e) => e.start.slice(0, 10) >= from && e.start.slice(0, 10) <= to) : []),
-    [entries, from, to],
+    () => (from && to ? mine.entries.filter((e) => e.start.slice(0, 10) >= from && e.start.slice(0, 10) <= to) : []),
+    [mine, from, to],
   )
 
   const rows = useMemo<Row[]>(() => {
@@ -164,10 +188,11 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         id: e.id,
         date: e.start.slice(0, 10),
         sort: e.start,
-        employer: names.get(e.employerId) ?? 'Employer',
+        // One employer chosen: its name would repeat on every row, so show the shift times instead.
+        employer: who === ALL_EMPLOYERS ? (names.get(e.employerId) ?? 'Employer') : `${formatClock(e.start.slice(11, 16))} – ${formatClock(e.end.slice(11, 16))}`,
         hours: formatDuration(shiftMinutes(e)),
       })),
-      ...expenses.map<Row>((x) => ({
+      ...mine.expenses.map<Row>((x) => ({
         kind: 'expense',
         id: x.id,
         date: x.date,
@@ -178,9 +203,10 @@ export default function Home({ initialDate }: { initialDate?: string }) {
     ]
     // Most recent first.
     return list.sort((a, b) => b.sort.localeCompare(a.sort))
-  }, [shown, expenses, employers])
+  }, [shown, mine, employers, who])
 
   if (!from || !to || !summary) return <main aria-label="Time clock" />
+  const whoName = who === ALL_EMPLOYERS ? 'All employers' : (employers.find((e) => e.id === who)?.name ?? 'Employer')
 
   const settled = loadedFor === key
   const words = PERIOD_WORDS[kind]
@@ -226,12 +252,29 @@ export default function Home({ initialDate }: { initialDate?: string }) {
           <button type="button" aria-label="Places" className={iconBtn} onClick={() => navigate('/places')}>
             <PinIcon />
           </button>
-          <button type="button" aria-label="Export" className={iconBtn} onClick={() => navigate(`/export?period=${kind}&from=${from}`)}>
+          <button type="button" aria-label="Export" className={iconBtn} onClick={() => navigate(`/export?period=${kind}&from=${from}${who === ALL_EMPLOYERS ? '' : `&employer=${who}`}`)}>
             <ShareIcon />
           </button>
         </div>
       </header>
       <PersistenceNote />
+
+      {activeEmployers(employers).length > 0 && (
+        <div className="mt-1 flex">
+          <Dropdown
+            value={who}
+            options={[
+              { value: ALL_EMPLOYERS, label: 'All employers' },
+              ...activeEmployers(employers).map((e) => ({ value: e.id, label: e.name })),
+            ]}
+            onChange={changeEmployer}
+            ariaLabel={`Employer: ${whoName}, change`}
+            menuLabel="Employer"
+            className="-ml-1 bg-surface px-4 text-lg font-semibold"
+            buttonLabel={<span className="truncate">{whoName}</span>}
+          />
+        </div>
+      )}
 
       <div style={swipe.style} className="min-h-[60dvh]">
       <nav aria-label="Period" className="mt-2 flex items-center justify-between">
