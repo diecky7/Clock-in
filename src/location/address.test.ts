@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { abbreviateStreet, copyText, formatParts, placeKey, shortAddress, zip5 } from './address'
 
 describe('address format', () => {
+  it('leaves GPS coordinates alone', () => {
+    expect(shortAddress('42.28010, -71.41010')).toBe('42.28010, -71.41010')
+    expect(shortAddress('12 Main St, Framingham, MA 01702')).toBe('12 Main St, Framingham, MA 01702')
+    expect(shortAddress('Framingham, Massachusetts 01702')).toBe('Framingham, MA 01702')
+  })
+
   it('abbreviates street types and directions but not names', () => {
     expect(abbreviateStreet('12 North Main Street')).toBe('12 N Main St')
     expect(abbreviateStreet('500 Park Avenue South')).toBe('500 Park Ave S')

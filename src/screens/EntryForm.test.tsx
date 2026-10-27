@@ -104,10 +104,10 @@ describe('EntryForm', () => {
     vi.mocked(geo.getCurrentPosition).mockResolvedValue({ lat: 42.36, lon: -71.05, accuracyM: 5 })
     vi.mocked(geo.reverseGeocode).mockResolvedValue(hall)
     await setup()
-    expect(await screen.findByRole('alert')).toHaveTextContent(saved.label)
+    expect(await screen.findByRole('dialog', { name: 'Saved address nearby' })).toHaveTextContent(saved.label)
     await user.click(screen.getByRole('button', { name: 'Use saved address' }))
     expect(screen.getByTestId('chosen-place')).toHaveTextContent(saved.label)
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('does not ask when the saved address is farther than the limit or the check is off', async () => {
@@ -117,7 +117,7 @@ describe('EntryForm', () => {
     vi.mocked(geo.reverseGeocode).mockResolvedValue(hall)
     await setup()
     expect(await screen.findByText(hall.label)).toBeInTheDocument()
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('shows an old long label in short form, in the chosen place and the nearby prompt', async () => {
@@ -128,8 +128,8 @@ describe('EntryForm', () => {
     vi.mocked(geo.getCurrentPosition).mockResolvedValue({ lat: 42.36, lon: -71.05, accuracyM: 5 })
     vi.mocked(geo.reverseGeocode).mockResolvedValue({ lat: 42.36, lon: -71.05, label: 'Elsewhere Rd, Boston, MA' })
     await setup()
-    expect(await screen.findByRole('alert')).toHaveTextContent('1 City Hall Plz, Boston, MA')
-    expect(screen.getByRole('alert')).not.toHaveTextContent('Massachusetts')
+    expect(await screen.findByRole('dialog', { name: 'Saved address nearby' })).toHaveTextContent('1 City Hall Plz, Boston, MA')
+    expect(screen.getByRole('dialog')).not.toHaveTextContent('Massachusetts')
     await user.click(screen.getByRole('button', { name: 'Use saved address' }))
     expect(screen.getByTestId('chosen-place')).toHaveTextContent('1 City Hall Plz, Boston, MA')
     expect(screen.getByTestId('chosen-place')).not.toHaveTextContent('Massachusetts')
