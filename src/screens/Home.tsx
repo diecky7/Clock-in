@@ -280,11 +280,12 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         <div className="shrink-0">
           <PeriodPicker kind={kind} label={periodLabel(kind, from)} onChange={changeKind} className={pill} />
         </div>
-        <nav aria-label="Period" className="ml-auto flex shrink-0 rounded-full bg-surface">
-          <button type="button" aria-label={`Previous ${words.unit}`} className="grid size-11 place-items-center rounded-full text-2xl" onClick={() => setFrom(shiftPeriod(kind, from, -1))}>
+        {/* Swiping changes the period; these stay for VoiceOver and keyboards only. */}
+        <nav aria-label="Period" className="sr-only">
+          <button type="button" aria-label={`Previous ${words.unit}`} onClick={() => setFrom(shiftPeriod(kind, from, -1))}>
             ‹
           </button>
-          <button type="button" aria-label={`Next ${words.unit}`} className="grid size-11 place-items-center rounded-full text-2xl" onClick={() => setFrom(shiftPeriod(kind, from, 1))}>
+          <button type="button" aria-label={`Next ${words.unit}`} onClick={() => setFrom(shiftPeriod(kind, from, 1))}>
             ›
           </button>
         </nav>

@@ -7,6 +7,11 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.7.2',
+    date: '2026-10-27',
+    changes: ['Arrow buttons removed from the home and Summary screens; swipe to change the period'],
+  },
+  {
     version: '1.7.1',
     date: '2026-10-27',
     changes: ['Employer, dates and arrows sit side by side on one line at the top of the home screen'],

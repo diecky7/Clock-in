@@ -48,7 +48,6 @@ export default function Summary() {
   }, [weekStart, anchor, data, weekStartsOn])
 
   const swipe = useWeekSwipe((dir) => setWeekStart((w) => (w ? addDays(w, dir * 7) : w)))
-  const iconBtn = 'grid size-11 place-items-center rounded-full text-2xl'
 
   const cards: [string, (s: PeriodSummary) => string][] = [
     ['Total', (s) => formatUSD(s.totalCents)],
@@ -62,12 +61,12 @@ export default function Summary() {
     <Screen title="Summary" back="/" swipe={swipe}>
       {weekStart && periods && (
         <>
-          <nav aria-label="Week" className="flex items-center justify-between">
-            <button type="button" aria-label="Previous week" className={iconBtn} onClick={() => setWeekStart(addDays(weekStart, -7))}>
+          <nav aria-label="Week" className="flex min-h-11 items-center justify-center">
+            <button type="button" aria-label="Previous week" className="sr-only" onClick={() => setWeekStart(addDays(weekStart, -7))}>
               ‹
             </button>
             <span className="text-base font-medium">{weekLabel(weekStart)}</span>
-            <button type="button" aria-label="Next week" className={iconBtn} onClick={() => setWeekStart(addDays(weekStart, 7))}>
+            <button type="button" aria-label="Next week" className="sr-only" onClick={() => setWeekStart(addDays(weekStart, 7))}>
               ›
             </button>
           </nav>
