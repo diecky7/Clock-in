@@ -37,20 +37,28 @@ describe('Export', () => {
     expect(await screen.findByRole('checkbox', { name: 'Acme' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Bolt' })).toBeChecked()
     expect(screen.queryByRole('checkbox', { name: 'Idle Co' })).not.toBeInTheDocument()
-    for (const name of ['Regular pay', 'Overtime pay', 'Expenses', 'Hourly rate', 'Addresses', 'Times and break'])
+    for (const name of ['Regular pay', 'Expenses', 'Hourly rate', 'Times and break'])
       expect(screen.getByRole('switch', { name })).toHaveAttribute('aria-checked', 'true')
+    // Nothing of these this week: off and locked, with the count beside the name.
+    for (const name of ['Overtime pay', 'Addresses']) {
+      expect(screen.getByRole('switch', { name })).toHaveAttribute('aria-checked', 'false')
+      expect(screen.getByRole('switch', { name })).toBeDisabled()
+    }
+    expect(screen.getByText('Regular pay').querySelector('span')).toHaveTextContent('(2)')
+    expect(screen.getByText('Expenses').querySelector('span')).toHaveTextContent('(1)')
+    expect(screen.getByText('Overtime pay').querySelector('span')).toHaveTextContent('(0)')
   })
 
   it('remembers nothing between visits', async () => {
     await seed()
     const user = userEvent.setup()
     const first = render(<Export week="2026-10-04" />)
-    await user.click(await screen.findByRole('switch', { name: 'Addresses' }))
+    await user.click(await screen.findByRole('switch', { name: 'Times and break' }))
     await user.click(screen.getByRole('checkbox', { name: 'Bolt' }))
-    expect(screen.getByRole('switch', { name: 'Addresses' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('switch', { name: 'Times and break' })).toHaveAttribute('aria-checked', 'false')
     first.unmount()
     render(<Export week="2026-10-04" />)
-    expect(await screen.findByRole('switch', { name: 'Addresses' })).toHaveAttribute('aria-checked', 'true')
+    expect(await screen.findByRole('switch', { name: 'Times and break' })).toHaveAttribute('aria-checked', 'true')
     expect(await screen.findByRole('checkbox', { name: 'Bolt' })).toBeChecked()
   })
 
@@ -129,6 +137,11 @@ describe('Export', () => {
     expect(await screen.findByText('September 2026')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Next month' }))
     expect(await screen.findByText('October 2026')).toBeInTheDocument()
+    // Oct 1 is a regular shift, Oct 2 is all overtime; no expenses this month.
+    await waitFor(() => expect(screen.getByText('Overtime pay').querySelector('span')).toHaveTextContent('(1)'))
+    expect(screen.getByText('Regular pay').querySelector('span')).toHaveTextContent('(1)')
+    expect(screen.getByRole('switch', { name: 'Overtime pay' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('switch', { name: 'Expenses' })).toBeDisabled()
     await user.click(await screen.findByRole('button', { name: 'Share PDF' }))
     await waitFor(() => expect(share).toHaveBeenCalledTimes(1))
     const [m] = vi.mocked(renderPdf).mock.calls[0][0]

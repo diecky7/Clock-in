@@ -7,6 +7,11 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.7.3',
+    date: '2026-10-28',
+    changes: ['Export: each option shows how many entries it covers, e.g. Overtime pay (2); options with none are switched off and locked'],
+  },
+  {
     version: '1.7.2',
     date: '2026-10-27',
     changes: ['Arrow buttons removed from the home and Summary screens; swipe to change the period'],
