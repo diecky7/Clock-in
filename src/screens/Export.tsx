@@ -109,6 +109,30 @@ export default function Export({
   const rows = summary?.byEmployer ?? []
   const selected = rows.filter((r) => !excluded.has(r.employerId))
 
+  // How many of each thing the selected employers have in this period. A toggle with nothing to show is off and locked.
+  const counts = useMemo(() => {
+    const shifts = selected.flatMap((r) => r.entries)
+    const splits = selected.flatMap((r) => r.splits)
+    const c: Record<keyof ReportOptions, number> = {
+      regularPay: splits.filter((s) => s.regularMinutes > 0).length,
+      overtimePay: splits.filter((s) => s.overtimeMinutes > 0).length,
+      expenses: selected.reduce((n, r) => n + r.expenses.length, 0),
+      hourlyRate: shifts.length,
+      addresses: shifts.filter((e) => e.place?.label).length,
+      timesAndBreak: shifts.length,
+    }
+    return c
+  }, [selected])
+  const on = (k: keyof ReportOptions) => options[k] && counts[k] > 0
+  const effective: ReportOptions = {
+    regularPay: on('regularPay'),
+    overtimePay: on('overtimePay'),
+    expenses: on('expenses'),
+    hourlyRate: on('hourlyRate'),
+    addresses: on('addresses'),
+    timesAndBreak: on('timesAndBreak'),
+  }
+
   async function share() {
     if (!from || busy) return
     if (selected.length === 0) {
@@ -120,7 +144,7 @@ export default function Export({
     try {
       const models = selected.flatMap((w) => {
         const employer = employers.find((e) => e.id === w.employerId)
-        return employer ? [buildReportModel(w, employer, from, options, periodLabel(kind, from))] : []
+        return employer ? [buildReportModel(w, employer, from, effective, periodLabel(kind, from))] : []
       })
       const bytes = await renderPdf(models, repo.getPhoto)
       const file = new File([bytes as BlobPart], `time-report-${kind === 'week' ? '' : `${kind}-`}${from}.pdf`, { type: 'application/pdf' })
@@ -192,12 +216,20 @@ export default function Export({
         </Section>
       )}
 
-      {TOGGLES.map((g) => (
+      {summary &&
+        TOGGLES.map((g) => (
         <Section key={g.group} title={g.group === 'Amounts' ? 'Show · Amounts' : 'Show · Details'}>
           {g.items.map((t) => (
             <div key={t.key} className={row}>
-              <span>{t.label}</span>
-              <Switch label={t.label} checked={options[t.key]} onChange={(v) => setOptions((o) => ({ ...o, [t.key]: v }))} />
+              <span>
+                {t.label} <span className="text-sm text-muted">({counts[t.key]})</span>
+              </span>
+              <Switch
+                label={t.label}
+                checked={effective[t.key]}
+                disabled={counts[t.key] === 0}
+                onChange={(v) => setOptions((o) => ({ ...o, [t.key]: v }))}
+              />
             </div>
           ))}
         </Section>

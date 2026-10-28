@@ -75,10 +75,12 @@ export function Switch({
   checked,
   onChange,
   label,
+  disabled = false,
 }: {
   checked: boolean
   onChange: (v: boolean) => void
   label: string
+  disabled?: boolean
 }) {
   return (
     <button
@@ -86,8 +88,9 @@ export function Switch({
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="grid h-11 w-14 shrink-0 place-items-center"
+      className="grid h-11 w-14 shrink-0 place-items-center disabled:opacity-40"
     >
       <span
         className={`relative block h-8 w-14 rounded-full border border-border transition-colors ${checked ? 'bg-accent' : 'bg-bg'}`}
