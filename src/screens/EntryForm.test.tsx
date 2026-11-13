@@ -210,3 +210,155 @@ describe('EntryForm', () => {
     expect((await repo.listEntriesBetween('2026-10-05', '2026-10-05')).filter((e) => e.id === 't1')).toHaveLength(1)
   })
 })
+
+describe('EntryForm side job', () => {
+  const sideEntry = { id: 's1', employerId: 'side-job', start: '2026-10-06T08:00', end: '2026-10-06T12:00', breakMin: 0, rateCents: 4500, service: 'Fence' }
+
+  it('Service and Hourly rate appear only for Side job', async () => {
+    const user = userEvent.setup()
+    await setup()
+    expect(screen.queryByLabelText('Service')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Hourly rate')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'Side job' }))
+    expect(screen.getByLabelText('Service')).toBeInTheDocument()
+    expect(screen.getByLabelText('Hourly rate')).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'Acme' }))
+    expect(screen.queryByLabelText('Service')).not.toBeInTheDocument()
+  })
+
+  it('Side job is the last choice', async () => {
+    await setup()
+    expect(screen.getAllByRole('radio').map((r) => r.textContent)).toEqual(['Acme', 'Bolt', 'Side job'])
+  })
+
+  it('the rate is required', async () => {
+    const user = userEvent.setup()
+    await setup()
+    await user.click(screen.getByRole('radio', { name: 'Side job' }))
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    expect(screen.getByText('Enter a valid rate')).toBeInTheDocument()
+    expect(await repo.listEntriesBetween('2026-10-01', '2026-10-31')).toEqual([])
+  })
+
+  it('saves the service and the typed rate, remembers the rate and shows the amount on Save', async () => {
+    const user = userEvent.setup()
+    await setup()
+    await user.click(screen.getByRole('radio', { name: 'Side job' }))
+    await user.type(screen.getByLabelText('Service'), '  Fence repair, Smiths ')
+    await user.type(screen.getByLabelText('Hourly rate'), '3000')
+    expect(screen.getByRole('button', { name: 'Save · 8h 00m · $240.00' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    await waitFor(async () => expect(await repo.listEntriesBetween('2026-10-05', '2026-10-05')).toHaveLength(1))
+    const [e] = await repo.listEntriesBetween('2026-10-05', '2026-10-05')
+    expect(e).toMatchObject({ employerId: 'side-job', rateCents: 3000, service: 'Fence repair, Smiths' })
+    expect((await repo.getSettings()).sideJobRateCents).toBe(3000)
+  })
+
+  it('leaves service out when empty and pre-fills the last rate next time', async () => {
+    const user = userEvent.setup()
+    await repo.saveSettings({ ...(await repo.getSettings()), sideJobRateCents: 2500 })
+    await setup()
+    await user.click(screen.getByRole('radio', { name: 'Side job' }))
+    expect(screen.getByLabelText('Hourly rate')).toHaveValue('$25.00')
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    await waitFor(async () => expect(await repo.listEntriesBetween('2026-10-05', '2026-10-05')).toHaveLength(1))
+    const [e] = await repo.listEntriesBetween('2026-10-05', '2026-10-05')
+    expect(e.rateCents).toBe(2500)
+    expect(e).not.toHaveProperty('service')
+  })
+
+  it('suggests past services', async () => {
+    const user = userEvent.setup()
+    await repo.saveEntry(sideEntry)
+    await setup()
+    await user.click(screen.getByRole('radio', { name: 'Side job' }))
+    expect(document.querySelectorAll('#service-suggestions option')).toHaveLength(1)
+    expect(document.querySelector('#service-suggestions option')).toHaveAttribute('value', 'Fence')
+  })
+
+  it('editing shows the entry rate and lets the user change it', async () => {
+    const user = userEvent.setup()
+    await repo.saveEntry(sideEntry)
+    render(<EntryForm id="s1" />)
+    const rate = await screen.findByLabelText('Hourly rate')
+    expect(rate).toHaveValue('$45.00')
+    expect(screen.getByLabelText('Service')).toHaveValue('Fence')
+    await user.clear(rate)
+    await user.type(rate, '5000')
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    await waitFor(async () => expect((await repo.getEntry('s1'))?.rateCents).toBe(5000))
+    expect((await repo.getEntry('s1'))?.service).toBe('Fence')
+  })
+
+  it('switching an entry to a regular employer drops the service and uses that rate', async () => {
+    const user = userEvent.setup()
+    await repo.saveEmployer(acme)
+    await repo.saveEntry(sideEntry)
+    render(<EntryForm id="s1" />)
+    await screen.findByLabelText('Service')
+    await user.click(screen.getByRole('radio', { name: 'Acme' }))
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    await waitFor(async () => expect((await repo.getEntry('s1'))?.employerId).toBe('e1'))
+    const e = await repo.getEntry('s1')
+    expect(e?.rateCents).toBe(3200)
+    expect(e).not.toHaveProperty('service')
+  })
+
+  it('with no real employers it asks for an employer first; "Log a side job" opens the form on Side job', async () => {
+    const user = userEvent.setup()
+    render(<EntryForm initialDate="2026-10-05" />)
+    expect(await screen.findByText('Add an employer first.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add employer' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Log a side job' }))
+    expect(await screen.findByLabelText('Service')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Side job' })).toBeChecked()
+  })
+
+  it('after a side job on "All", the next new entry opens on the last real employer', async () => {
+    const user = userEvent.setup()
+    await setup()
+    await user.click(screen.getByRole('radio', { name: 'Bolt' }))
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    await waitFor(async () => expect((await repo.getSettings()).lastEmployerId).toBe('e2'))
+    await repo.saveEntry({ id: 'sj', employerId: 'side-job', start: '2026-10-06T08:00', end: '2026-10-06T10:00', breakMin: 0, rateCents: 2000 })
+    await repo.rememberEmployer('side-job')
+    expect((await repo.getSettings()).lastEmployerId).toBe('e2')
+    document.body.innerHTML = ''
+    render(<EntryForm initialDate="2026-10-07" />)
+    expect(await screen.findByRole('radio', { name: 'Bolt' })).toBeChecked()
+  })
+
+  it('remembers the rate only from a new side job or the latest one', async () => {
+    const user = userEvent.setup()
+    await repo.saveEntry({ ...sideEntry, id: 'old', start: '2026-10-01T08:00', end: '2026-10-01T10:00', rateCents: 1000 })
+    await repo.saveEntry({ ...sideEntry, id: 'new', start: '2026-10-06T08:00', rateCents: 4500 })
+    await repo.saveSettings({ ...(await repo.getSettings()), sideJobRateCents: 4500 })
+    render(<EntryForm id="old" />)
+    const rate = await screen.findByLabelText('Hourly rate')
+    await user.clear(rate)
+    await user.type(rate, '9900')
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    await waitFor(async () => expect((await repo.getEntry('old'))?.rateCents).toBe(9900))
+    expect((await repo.getSettings()).sideJobRateCents).toBe(4500) // untouched: not the latest side job
+  })
+
+  it('a failed save and a retry write one entry, not two', async () => {
+    const user = userEvent.setup()
+    await setup()
+    const spy = vi.spyOn(repo, 'saveEntry').mockRejectedValueOnce(new Error('full'))
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    expect(await screen.findByText(/Couldn't save/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    await waitFor(async () => expect(await repo.listEntriesBetween('2026-10-05', '2026-10-05')).toHaveLength(1))
+    spy.mockRestore()
+  })
+
+  it('when the home screen is fixed to Side job it says so', async () => {
+    await repo.saveEmployer(acme)
+    await repo.saveSettings({ ...(await repo.getSettings()), homeEmployer: 'side-job' })
+    render(<EntryForm initialDate="2026-10-05" />)
+    expect(await screen.findByText('Side job')).toBeInTheDocument()
+    expect(screen.getByLabelText('Hourly rate')).toBeInTheDocument()
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+  })
+})

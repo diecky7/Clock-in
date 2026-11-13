@@ -7,7 +7,7 @@ import { BackupError, exportBackup, importBackup } from '../data/backup'
 import { shareOrDownload } from '../data/shareFile'
 import * as repo from '../data/repo'
 import { Screen, Section, inputCls } from '../components/ui'
-import { activeEmployers } from '../domain/employers'
+import { activeEmployers, isSideJob } from '../domain/employers'
 import { formatUSD } from '../domain/money'
 import { rateOn } from '../domain/rates'
 import { today } from '../domain/today'
@@ -100,7 +100,7 @@ export default function Settings() {
     <Screen title="Settings" back="/">
       <PersistenceNote />
       <Section title="Employers">
-        {activeEmployers(employers).map((e) => (
+        {activeEmployers(employers).filter((e) => !isSideJob(e.id)).map((e) => (
           <div key={e.id} className={divider}>
             <button type="button" className={rowCls} onClick={() => navigate(`/settings/employer/${e.id}`)}>
               <span>{e.name}</span>

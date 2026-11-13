@@ -3,7 +3,7 @@ import EmployerPicker from '../components/EmployerPicker'
 import PhotoPicker from '../components/PhotoPicker'
 import { Field, PrimaryButton, Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
-import { ALL_EMPLOYERS, defaultEmployerId, homeEmployerFor } from '../domain/employers'
+import { ALL_EMPLOYERS, defaultEmployerId, homeEmployerFor, isSideJob } from '../domain/employers'
 import DateTimeField from '../components/DateTimeField'
 import MoneyInput from '../components/MoneyInput'
 import { formatUSD } from '../domain/money'
@@ -124,7 +124,7 @@ export default function ExpenseForm({ id, initialDate }: { id?: string; initialD
       </Screen>
     )
   }
-  if (employers.length === 0) {
+  if (!employers.some((e) => !isSideJob(e.id)) && !existing && !fixedEmployer) {
     return (
       <Screen title={title} back="/">
         <p className="mt-6 text-muted">Add an employer first.</p>

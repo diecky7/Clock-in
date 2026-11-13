@@ -7,6 +7,15 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.8.0',
+    date: '2026-11-13',
+    changes: [
+      'Side job: log work you do on your own — pick Side job, write the service and set the hourly rate right on the entry screen',
+      'Side job shows up in the home menu, Export (each row with its own rate and service), Summary, Places and expenses',
+      'Side job never replaces your usual employer as the default',
+    ],
+  },
+  {
     version: '1.7.3',
     date: '2026-10-28',
     changes: ['Export: each option shows how many entries it covers, e.g. Overtime pay (2); options with none are switched off and locked'],

@@ -4,12 +4,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { exportBackup } from '../data/backup'
 import { resetDbForTests } from '../data/db'
 import * as repo from '../data/repo'
-import { activeEmployers } from '../domain/employers'
+import { activeEmployers, isSideJob } from '../domain/employers'
 import { today } from '../domain/today'
 import type { Employer, TimeEntry } from '../domain/types'
 import EmployerEdit from './EmployerEdit'
 import ScheduleEdit from './ScheduleEdit'
 import Settings from './Settings'
+
+// listEmployers() always ends with the built-in Side job; these tests look at the stored employers only.
+const listStored = async () => (await repo.listEmployers()).filter((e) => !isSideJob(e.id))
 
 beforeEach(async () => {
   await resetDbForTests()
@@ -31,8 +34,8 @@ describe('EmployerEdit', () => {
     await user.type(await screen.findByLabelText('Name'), 'Acme')
     await user.type(screen.getByLabelText('Hourly rate'), '32.00')
     await user.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(async () => expect(await repo.listEmployers()).toHaveLength(1))
-    const [e] = await repo.listEmployers()
+    await waitFor(async () => expect(await listStored()).toHaveLength(1))
+    const [e] = await listStored()
     expect(e.name).toBe('Acme')
     expect(e.rates).toEqual([{ from: today(), cents: 3200 }])
     expect(e.archived).toBe(false)
@@ -56,8 +59,8 @@ describe('EmployerEdit', () => {
     await user.clear(rate)
     await user.type(rate, '3500')
     await user.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(async () => expect((await repo.listEmployers())[0].rates).toHaveLength(2))
-    const [e] = await repo.listEmployers()
+    await waitFor(async () => expect((await listStored())[0].rates).toHaveLength(2))
+    const [e] = await listStored()
     expect(e.rates[1]).toEqual({ from: today(), cents: 3500 })
     expect((await repo.getEntry('t1'))?.rateCents).toBe(3000)
   })
@@ -75,8 +78,8 @@ describe('EmployerEdit', () => {
     render(<EmployerEdit id="e1" />)
     await user.click(await screen.findByRole('button', { name: 'Delete employer' }))
     await user.click(screen.getByRole('button', { name: 'Archive' }))
-    await waitFor(async () => expect((await repo.listEmployers())[0].archived).toBe(true))
-    expect(activeEmployers(await repo.listEmployers())).toEqual([])
+    await waitFor(async () => expect((await listStored())[0].archived).toBe(true))
+    expect(activeEmployers(await listStored())).toEqual([])
   })
 
   it('the overtime switch saves overtimeEnabled', async () => {
@@ -85,7 +88,7 @@ describe('EmployerEdit', () => {
     render(<EmployerEdit id="e1" />)
     await user.click(await screen.findByRole('switch', { name: /Overtime/ }))
     await user.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(async () => expect((await repo.listEmployers())[0].overtimeEnabled).toBe(true))
+    await waitFor(async () => expect((await listStored())[0].overtimeEnabled).toBe(true))
   })
 
   it('shows inline errors and does not save an empty name or invalid rate', async () => {
@@ -98,7 +101,7 @@ describe('EmployerEdit', () => {
     await user.type(screen.getByLabelText('Hourly rate'), 'abc')
     await user.click(screen.getByRole('button', { name: 'Save' }))
     expect(screen.getByText('Enter a valid rate')).toBeInTheDocument()
-    expect(await repo.listEmployers()).toEqual([])
+    expect(await listStored()).toEqual([])
   })
 })
 
@@ -197,7 +200,7 @@ describe('Settings backup', () => {
     expect(await screen.findByText('Replace all data on this device?')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Replace' }))
     expect(await screen.findByText('Backup restored.')).toBeInTheDocument()
-    expect((await repo.listEmployers()).map((e) => e.name)).toEqual(['Acme'])
+    expect((await listStored()).map((e) => e.name)).toEqual(['Acme'])
   })
 
   it('Cancel leaves data alone; an invalid file shows the error and keeps data', async () => {
@@ -207,10 +210,25 @@ describe('Settings backup', () => {
     const input = await screen.findByLabelText('Backup file')
     await user.upload(input, new File(['nope'], 'b.json', { type: 'application/json' }))
     await user.click(await screen.findByRole('button', { name: 'Cancel' }))
-    expect(await repo.listEmployers()).toHaveLength(1)
+    expect(await listStored()).toHaveLength(1)
     await user.upload(input, new File(['nope'], 'b.json', { type: 'application/json' }))
     await user.click(await screen.findByRole('button', { name: 'Replace' }))
     expect(await screen.findByText("This isn't a valid backup file.")).toBeInTheDocument()
-    expect(await repo.listEmployers()).toHaveLength(1)
+    expect(await listStored()).toHaveLength(1)
+  })
+})
+
+describe('Settings with Side job', () => {
+  it('does not list Side job as an employer', async () => {
+    await repo.saveEmployer(acme)
+    render(<Settings />)
+    expect(await screen.findByText('Acme')).toBeInTheDocument()
+    expect(screen.queryByText('Side job')).not.toBeInTheDocument()
+  })
+
+  it('has no edit screen for Side job', async () => {
+    render(<EmployerEdit id="side-job" />)
+    await waitFor(() => expect(screen.queryByLabelText('Name')).not.toBeInTheDocument())
+    expect(await listStored()).toEqual([])
   })
 })

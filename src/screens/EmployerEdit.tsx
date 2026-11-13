@@ -7,6 +7,7 @@ import { formatUSD } from '../domain/money'
 import { addRateChange, rateOn } from '../domain/rates'
 import { formatDate } from '../domain/time'
 import { today } from '../domain/today'
+import { isSideJob } from '../domain/employers'
 import type { Employer } from '../domain/types'
 import { navigate } from '../router'
 
@@ -26,7 +27,7 @@ export default function EmployerEdit({ id }: { id: string }) {
     let alive = true
     void repo.listEmployers().then((all) => {
       if (!alive) return
-      const e = all.find((x) => x.id === id) ?? null
+      const e = isSideJob(id) ? null : (all.find((x) => x.id === id) ?? null)
       setEmployer(e)
       if (e) {
         setName(e.name)

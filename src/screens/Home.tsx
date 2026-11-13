@@ -17,7 +17,7 @@ import { biweekAnchorFor, PERIOD_WORDS, periodEnd, periodLabel, periodStart, shi
 import { summarizePeriod } from '../domain/summary'
 import PeriodPicker from '../components/PeriodPicker'
 import Dropdown from '../components/Dropdown'
-import { ALL_EMPLOYERS, activeEmployers, homeEmployerFor } from '../domain/employers'
+import { ALL_EMPLOYERS, SIDE_JOB_ID, activeEmployers, homeEmployerFor, isSideJob } from '../domain/employers'
 import { navigate } from '../router'
 
 const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -28,7 +28,7 @@ function dayLabel(date: string): string {
 }
 
 type Row =
-  | { kind: 'entry'; id: string; date: string; sort: string; employer: string; hours: string }
+  | { kind: 'entry'; id: string; date: string; sort: string; employer: string; service?: string; hours: string }
   | { kind: 'expense'; id: string; date: string; sort: string; description: string; amount: string }
 
 function RowButton({ row, onOpen }: { row: Row; onOpen: () => void }) {
@@ -50,7 +50,14 @@ function RowButton({ row, onOpen }: { row: Row; onOpen: () => void }) {
       <span className="w-16 shrink-0 whitespace-nowrap text-muted">{dayLabel(row.date)}</span>
       {row.kind === 'entry' ? (
         <>
-          <span className="flex-1 truncate">{row.employer}</span>
+          {row.service ? (
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">{row.employer}</span>
+              <span className="block truncate text-sm text-muted">{row.service}</span>
+            </span>
+          ) : (
+            <span className="flex-1 truncate">{row.employer}</span>
+          )}
           <span className="tabular-nums">{row.hours}</span>
         </>
       ) : (
@@ -68,7 +75,7 @@ function RowButton({ row, onOpen }: { row: Row; onOpen: () => void }) {
 
 /** Two-week pay periods: the chosen employer's own, or for all employers the usual pick. */
 function anchorFor(employers: Employer[], who: string, lastEmployerId?: string): string | undefined {
-  if (who === ALL_EMPLOYERS) return biweekAnchorFor(employers, lastEmployerId)
+  if (who === ALL_EMPLOYERS || isSideJob(who)) return biweekAnchorFor(employers, lastEmployerId)
   return employers.find((e) => e.id === who)?.biweeklyStart || undefined
 }
 
@@ -190,6 +197,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         sort: e.start,
         // One employer chosen: its name would repeat on every row, so show the shift times instead.
         employer: who === ALL_EMPLOYERS ? (names.get(e.employerId) ?? 'Employer') : `${formatClock(e.start.slice(11, 16))} – ${formatClock(e.end.slice(11, 16))}`,
+        ...(e.service ? { service: e.service } : {}),
         hours: formatDuration(shiftMinutes(e)),
       })),
       ...mine.expenses.map<Row>((x) => ({
@@ -261,7 +269,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
       <PersistenceNote />
 
       <div className="mt-2 flex items-center gap-2">
-        {activeEmployers(employers).length > 0 && (
+        {(activeEmployers(employers).some((e) => !isSideJob(e.id)) || who === SIDE_JOB_ID) && (
           <div className="min-w-0 shrink">
             <Dropdown
               value={who}

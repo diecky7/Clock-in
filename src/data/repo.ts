@@ -1,5 +1,6 @@
 import { shiftMinutes } from '../domain/time'
 import { placeKey, shortAddress } from '../location/address'
+import { SIDE_JOB } from '../domain/employers'
 import type { Employer, Expense, Place, Settings, TimeEntry } from '../domain/types'
 import {
   getDb,
@@ -22,11 +23,45 @@ export function defaultSettings(): Settings {
   }
 }
 
+/** Stored employers, then the built-in Side job (unless a stored record with that id exists). */
 export async function listEmployers(): Promise<Employer[]> {
-  return (await getDb()).getAll(STORE_EMPLOYERS)
+  const stored = await (await getDb()).getAll(STORE_EMPLOYERS)
+  return stored.some((e) => e.id === SIDE_JOB.id) ? stored : [...stored, SIDE_JOB]
 }
 export async function saveEmployer(e: Employer): Promise<void> {
+  if (e.id === SIDE_JOB.id) return // built in, never stored
   await (await getDb()).put(STORE_EMPLOYERS, e)
+}
+
+/** Distinct services of past side-job entries, most recent first. */
+export async function listServices(limit = 20): Promise<string[]> {
+  return servicesFrom(await (await getDb()).getAll(STORE_ENTRIES), limit)
+}
+function servicesFrom(all: TimeEntry[], limit = 20): string[] {
+  const entries = all.filter((e) => e.employerId === SIDE_JOB.id && e.service?.trim())
+  entries.sort((a, b) => b.start.localeCompare(a.start))
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const e of entries) {
+    const s = e.service!.trim()
+    if (seen.has(s.toLowerCase())) continue
+    seen.add(s.toLowerCase())
+    out.push(s)
+    if (out.length >= limit) break
+  }
+  return out
+}
+
+/** The side-job entry with the latest start, if any. */
+export async function latestSideJobEntry(): Promise<TimeEntry | undefined> {
+  const all = (await (await getDb()).getAll(STORE_ENTRIES)).filter((e) => e.employerId === SIDE_JOB.id)
+  return all.sort((a, b) => b.start.localeCompare(a.start))[0]
+}
+
+/** Address list and service suggestions for the entry form, from one pass over the entries. */
+export async function listPlacesAndServices(): Promise<{ places: Place[]; services: string[] }> {
+  const [settings, entries] = await Promise.all([getSettings(), (await getDb()).getAll(STORE_ENTRIES)])
+  return { places: placesFrom(settings, entries), services: servicesFrom(entries) }
 }
 
 export async function listEntriesBetween(fromDate: string, toDate: string): Promise<TimeEntry[]> {
@@ -97,6 +132,7 @@ export async function getSettings(): Promise<Settings> {
   return s ?? defaultSettings()
 }
 export async function rememberEmployer(id: string): Promise<void> {
+  if (id === SIDE_JOB.id) return // Side job never becomes the default employer
   const s = await getSettings()
   if (s.lastEmployerId !== id) await saveSettings({ ...s, lastEmployerId: id })
 }
@@ -143,6 +179,9 @@ export async function savePlaceDetail(p: Place, detail: NonNullable<Place['detai
  */
 export async function listAllPlaces(): Promise<Place[]> {
   const [settings, entries] = await Promise.all([getSettings(), (await getDb()).getAll(STORE_ENTRIES)])
+  return placesFrom(settings, entries)
+}
+function placesFrom(settings: Settings, entries: TimeEntry[]): Place[] {
   const seen = new Set<string>(settings.hiddenPlaces ?? [])
   const all: Place[] = []
   const add = (p: Place | undefined) => {

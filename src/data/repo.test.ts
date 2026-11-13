@@ -100,7 +100,7 @@ describe('repo', () => {
       rates: [{ from: '2026-01-01', cents: 2500 }, { from: '2026-06-01', cents: 2700 }],
     }
     await repo.saveEmployer(e)
-    expect(await repo.listEmployers()).toEqual([e])
+    expect((await repo.listEmployers()).filter((x) => x.id !== 'side-job')).toEqual([e])
   })
 
   it('stores one short entry for two spellings of an address', async () => {
@@ -108,5 +108,35 @@ describe('repo', () => {
     await repo.addRecentPlace({ lat: 1, lon: 2, label: '12 Main St, Framingham, MA' })
     expect((await repo.getSettings()).recentPlaces.map((p) => p.label)).toEqual(['12 Main St, Framingham, MA'])
     expect(await repo.listAllPlaces()).toHaveLength(1)
+  })
+})
+
+describe('side job', () => {
+  const side = (id: string, start: string, service?: string): TimeEntry => ({
+    id, employerId: 'side-job', start, end: start.slice(0, 10) + 'T15:30', breakMin: 0, rateCents: 3000, ...(service ? { service } : {}),
+  })
+
+  it('listEmployers appends the built-in Side job after the stored employers', async () => {
+    const e: Employer = { id: 'e1', name: 'Acme', overtimeEnabled: false, archived: false, rates: [] }
+    expect((await repo.listEmployers()).map((x) => x.id)).toEqual(['side-job'])
+    await repo.saveEmployer(e)
+    expect((await repo.listEmployers()).map((x) => x.id)).toEqual(['e1', 'side-job'])
+  })
+
+  it('saveEmployer never stores Side job', async () => {
+    await repo.saveEmployer({ id: 'side-job', name: 'Hacked', overtimeEnabled: true, archived: true, rates: [] })
+    const [only] = await repo.listEmployers()
+    expect(only).toMatchObject({ id: 'side-job', name: 'Side job', overtimeEnabled: false, archived: false })
+  })
+
+  it('listServices: distinct side-job services, most recent first, max 20', async () => {
+    await repo.saveEntry(side('a', '2026-10-01T08:00', 'Fence'))
+    await repo.saveEntry(side('b', '2026-10-03T08:00', 'Deck'))
+    await repo.saveEntry(side('c', '2026-10-05T08:00', 'fence'))
+    await repo.saveEntry(side('d', '2026-10-06T08:00'))
+    await repo.saveEntry({ ...entry('e', '2026-10-07T07:00'), service: 'Not a side job' })
+    expect(await repo.listServices()).toEqual(['fence', 'Deck'])
+    for (let i = 0; i < 25; i++) await repo.saveEntry(side(`m${i}`, `2026-09-${String(i + 1).padStart(2, '0')}T08:00`, `Job ${i}`))
+    expect(await repo.listServices()).toHaveLength(20)
   })
 })

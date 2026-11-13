@@ -32,6 +32,8 @@ export interface TimeEntry {
   breakMin: number
   rateCents: number
   place?: Place
+  /** Side jobs only: what was done / for whom. */
+  service?: string
 }
 export interface Expense {
   id: string
@@ -56,4 +58,6 @@ export interface Settings {
   homeEmployer?: string
   /** Addresses removed from the address book (placeKey), so past entries don't bring them back. */
   hiddenPlaces?: string[]
+  /** Hourly rate (cents) of the last side job; pre-fills the next one. */
+  sideJobRateCents?: number
 }
