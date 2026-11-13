@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildReportModel } from './report'
 import { defaultOptions } from './options'
 import { computeWeek } from '../domain/pay'
+import { SIDE_JOB } from '../domain/employers'
 import type { Employer, Expense, TimeEntry } from '../domain/types'
 
 const emp: Employer = {
@@ -96,5 +97,48 @@ describe('buildReportModel', () => {
   it('rate falls back to rateOn with no entries', () => {
     const m = buildReportModel({ ...week(), entries: [] }, emp, weekStart, defaultOptions)
     expect(m.rateLabel).toBe('$30.00/h')
+  })
+})
+
+describe('buildReportModel for Side job', () => {
+  const side = (id: string, day: string, hours: number, rateCents: number, service?: string): TimeEntry => ({
+    id, employerId: 'side-job', start: `${day}T08:00`, end: `${day}T${String(8 + hours).padStart(2, '0')}:00`, breakMin: 0, rateCents,
+    ...(service ? { service } : {}),
+  })
+  const rows = [side('s1', '2026-10-05', 4, 2000, 'Fence repair'), side('s2', '2026-10-06', 8, 3500), side('s3', '2026-10-07', 12, 3000, 'Deck')]
+  const w = computeWeek({ weekStart, entries: rows, expenses: [], employers: [SIDE_JOB] }).byEmployer[0]
+
+  it('totals each entry at its own rate, no overtime past 40 h', () => {
+    const m = buildReportModel(w, SIDE_JOB, weekStart, defaultOptions)
+    expect(m.employerName).toBe('Side job')
+    expect(m.hoursTotal).toBe('24h 00m')
+    expect(m.valueLines).toEqual([{ label: 'Regular pay', detail: '24h 00m', cents: 4 * 2000 + 8 * 3500 + 12 * 3000 }])
+    expect(m.totalCents).toBe(8000 + 28000 + 36000)
+    expect(m.rateLabel).toBeUndefined() // rows carry their own rate
+  })
+
+  it('every row carries its own rate and service', () => {
+    const m = buildReportModel(w, SIDE_JOB, weekStart, defaultOptions)
+    expect(m.days.map((d) => d.detail)).toEqual(['$20.00/h · Fence repair', '$35.00/h', '$30.00/h · Deck'])
+  })
+
+  it('rate off: the rows keep the service only', () => {
+    const m = buildReportModel(w, SIDE_JOB, weekStart, { ...defaultOptions, hourlyRate: false })
+    expect(m.days.map((d) => d.detail)).toEqual(['Fence repair', undefined, 'Deck'])
+    expect(m.rateLabel).toBeUndefined()
+  })
+
+  it('regular employers do not get per-row rates', () => {
+    expect(build().days[1].detail).toBeUndefined()
+  })
+})
+
+describe('buildReportModel edge cases', () => {
+  it('no Regular pay line and no $0.00/h for a section with no hours', () => {
+    const w = { ...week(), entries: [], minutes: 0, regularMinutes: 0, regularCents: 0 }
+    const none = { ...emp, rates: [] }
+    const m = buildReportModel(w, none, weekStart, defaultOptions)
+    expect(m.valueLines.find((l) => l.label === 'Regular pay')).toBeUndefined()
+    expect(m.rateLabel).toBeUndefined()
   })
 })

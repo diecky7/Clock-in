@@ -185,3 +185,15 @@ describe('Places', () => {
     expect((await repo.listAllPlaces()).map((p) => p.label)).toEqual(['12 Main St, Framingham, MA'])
   })
 })
+
+describe('Places with Side job', () => {
+  it('names Side job as the employer of a visit', async () => {
+    const place = { lat: 1, lon: 2, label: '9 Elm St, Salem, MA 01970' }
+    await repo.addRecentPlace(place)
+    await repo.saveEntry({ id: 's', employerId: 'side-job', start: '2026-10-05T07:00', end: '2026-10-05T11:00', breakMin: 0, rateCents: 3000, place })
+    const user = userEvent.setup()
+    render(<Places />)
+    await user.click(await screen.findByRole('button', { name: /^Directions to/ }))
+    expect(await within(screen.getByRole('dialog')).findByText('Side job')).toBeInTheDocument()
+  })
+})

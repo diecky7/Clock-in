@@ -1,4 +1,5 @@
 import { getDb, SETTINGS_KEY, STORES, type PhotoRecord } from './db'
+import { SIDE_JOB_ID } from '../domain/employers'
 import type { Employer, Expense, Settings, TimeEntry } from '../domain/types'
 
 export class BackupError extends Error {
@@ -72,7 +73,8 @@ const validPlace = (p: unknown): boolean =>
 const validEntry = (r: unknown): r is TimeEntry =>
   isObj(r) && isStr(r.id) && isStr(r.employerId) && r.employerId !== '' &&
   isDateTime(r.start) && isDateTime(r.end) && isCents(r.breakMin) && isCents(r.rateCents) &&
-  (r.place === undefined || validPlace(r.place))
+  (r.place === undefined || validPlace(r.place)) &&
+  (r.service === undefined || isStr(r.service))
 const validExpense = (r: unknown): r is Expense =>
   isObj(r) && isStr(r.id) && isStr(r.employerId) && isDate(r.date) && isStr(r.description) &&
   isCents(r.amountCents) && isArr(r.photoIds) && r.photoIds.every(isStr)
@@ -87,7 +89,8 @@ const validSettings = (r: unknown): r is Settings =>
   (r.lastEmployerId === undefined || isStr(r.lastEmployerId)) &&
   (r.homePeriod === undefined || r.homePeriod === 'week' || r.homePeriod === 'biweek' || r.homePeriod === 'month') &&
   (r.homeEmployer === undefined || isStr(r.homeEmployer)) &&
-  (r.hiddenPlaces === undefined || (isArr(r.hiddenPlaces) && r.hiddenPlaces.every(isStr)))
+  (r.hiddenPlaces === undefined || (isArr(r.hiddenPlaces) && r.hiddenPlaces.every(isStr))) &&
+  (r.sideJobRateCents === undefined || isCents(r.sideJobRateCents))
 const validPhoto = (r: unknown): r is PhotoJson =>
   isObj(r) && isStr(r.id) && isStr(r.type) && isStr(r.data)
 
@@ -144,7 +147,7 @@ export async function importBackup(file: Blob): Promise<void> {
     try {
       await Promise.all(STORES.map((s) => tx.objectStore(s).clear()))
       await Promise.all([
-        ...data.employers.map((r) => tx.objectStore('employers').put(r)),
+        ...data.employers.filter((r) => r.id !== SIDE_JOB_ID).map((r) => tx.objectStore('employers').put(r)),
         ...data.entries.map((r) => tx.objectStore('entries').put(r)),
         ...data.expenses.map((r) => tx.objectStore('expenses').put(r)),
         ...data.photos.map((r) => tx.objectStore('photos').put(r)),

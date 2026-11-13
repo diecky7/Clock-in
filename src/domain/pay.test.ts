@@ -121,3 +121,20 @@ describe('computeWeek', () => {
     expect(r.expensesCents).toBe(100)
   })
 })
+
+describe('side job pay', () => {
+  const side: Employer = { id: 'side-job', name: 'Side job', overtimeEnabled: false, archived: false, rates: [] }
+  it('pays each entry at its own rate and never adds overtime above 40 h', () => {
+    // 45 h in the week: 5 x 5 h at $20, then 2 x 10 h at $35
+    const entries = [
+      ...[5, 6, 7, 8, 9].map((d) => entry('side-job', `2026-10-0${d}T08:00`, `2026-10-0${d}T13:00`, 2000)),
+      entry('side-job', '2026-10-10T08:00', '2026-10-10T18:00', 3500),
+      entry('side-job', '2026-10-11T08:00', '2026-10-11T18:00', 3500),
+    ]
+    const g = computeWeek({ weekStart: WS, entries, expenses: [], employers: [side] }).byEmployer[0]
+    expect(g.minutes).toBe(2700)
+    expect(g.overtimeMinutes).toBe(0)
+    expect(g.overtimeCents).toBe(0)
+    expect(g.regularCents).toBe(25 * 2000 + 20 * 3500)
+  })
+})

@@ -127,3 +127,10 @@ describe('ExpenseForm', () => {
     expect((await repo.getExpense('x1'))?.photoIds).toEqual([p2])
   })
 })
+
+describe('ExpenseForm without real employers', () => {
+  it('asks for an employer first (Side job alone does not count)', async () => {
+    render(<ExpenseForm initialDate="2026-10-05" />)
+    expect(await screen.findByText('Add an employer first.')).toBeInTheDocument()
+  })
+})

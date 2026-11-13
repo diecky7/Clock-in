@@ -3,6 +3,7 @@ import { shortAddress } from '../location/address'
 import type { EmployerWeek } from '../domain/pay'
 import { formatDuration, shiftMinutes } from '../domain/time'
 import { formatUSD } from '../domain/money'
+import { isSideJob } from '../domain/employers'
 import { rateOn } from '../domain/rates'
 import { weekLabel } from '../domain/weeks'
 import type { ReportOptions } from './options'
@@ -60,7 +61,7 @@ export function buildReportModel(
   periodLabel = weekLabel(weekStart),
 ): ReportModel {
   const valueLines: ReportModel['valueLines'] = []
-  if (o.regularPay) {
+  if (o.regularPay && week.minutes > 0) {
     valueLines.push({ label: 'Regular pay', detail: formatDuration(week.regularMinutes), cents: week.regularCents })
   }
   if (o.overtimePay && week.overtimeMinutes > 0) {
@@ -74,6 +75,11 @@ export function buildReportModel(
   const sorted = [...week.entries].sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0))
   const days: ReportDay[] = sorted.map(e => {
     const parts: string[] = []
+    // Side-job rates differ from entry to entry, so each row says what it was and at which rate.
+    if (isSideJob(employer.id)) {
+      if (o.hourlyRate) parts.push(`${formatUSD(e.rateCents)}/h`)
+      if (e.service) parts.push(e.service) // before break and address; the PDF cuts the long line with an ellipsis
+    }
     if (o.timesAndBreak && e.breakMin > 0) parts.push(`${e.breakMin} min break`)
     if (o.addresses && e.place?.label) parts.push(shortAddress(e.place.label))
     const day: ReportDay = { label: dateLabel(e.start.split('T')[0]), hours: formatDuration(shiftMinutes(e)) }
@@ -106,6 +112,10 @@ export function buildReportModel(
     expenseItems: exps.map(x => ({ description: x.description.trim() || 'Expense', cents: x.amountCents })),
     receipts,
   }
-  if (o.hourlyRate) model.rateLabel = rateLabelFor(sorted, employer, weekStart)
+  // Side-job rows carry their own rate; a $0.00/h header would only be wrong.
+  if (o.hourlyRate && !isSideJob(employer.id)) {
+    const label = rateLabelFor(sorted, employer, weekStart)
+    if (label !== '$0.00/h') model.rateLabel = label
+  }
   return model
 }

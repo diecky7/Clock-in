@@ -2,9 +2,11 @@ import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import DateTimeField from '../components/DateTimeField'
 import EmployerPicker from '../components/EmployerPicker'
 import Modal from '../components/Modal'
+import MoneyInput from '../components/MoneyInput'
+import { formatUSD } from '../domain/money'
 import { Field, PrimaryButton, Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
-import { ALL_EMPLOYERS, defaultEmployerId, homeEmployerFor } from '../domain/employers'
+import { ALL_EMPLOYERS, SIDE_JOB_ID, defaultEmployerId, homeEmployerFor, isSideJob } from '../domain/employers'
 import { rateOn } from '../domain/rates'
 import { formatDuration, shiftMinutes, validateShift } from '../domain/time'
 import { today } from '../domain/today'
@@ -18,6 +20,7 @@ import { navigate } from '../router'
 // The map library is large; load it only when this form opens.
 const MapPicker = lazy(() => import('../location/MapPicker'))
 
+const MAX_SERVICE = 80
 const DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
 
 function parseBreak(text: string): number {
@@ -51,8 +54,15 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
   const [breakText, setBreakText] = useState('0')
   const [place, setPlace] = useState<Place | null>(null)
   const [outTouched, setOutTouched] = useState(false)
+  const [service, setService] = useState('')
+  const [rateCents, setRateCents] = useState<number | null>(null)
+  const [services, setServices] = useState<string[]>([])
+  // With no real employer, "Log a side job" skips the "Add an employer first" screen.
+  const [sideChosen, setSideChosen] = useState(false)
+  // Generated once, so a retry after a failed save cannot create a second entry.
+  const newId = useRef(crypto.randomUUID())
 
-  const [errors, setErrors] = useState<{ start?: string; end?: string; brk?: string }>({})
+  const [errors, setErrors] = useState<{ start?: string; end?: string; brk?: string; rate?: string }>({})
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
@@ -67,7 +77,8 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
   useEffect(() => {
     let alive = true
     void (async () => {
-      const [all, s, places] = await Promise.all([repo.listEmployers(), repo.getSettings(), repo.listAllPlaces()])
+      const [all, s, lists] = await Promise.all([repo.listEmployers(), repo.getSettings(), repo.listPlacesAndServices()])
+      const { places, services: svc } = lists
       const entry = editing ? ((await repo.getEntry(id)) ?? null) : null
       if (!alive) return
       if (editing && !entry) {
@@ -79,13 +90,16 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
       setEmployers(choices)
       setSettings(s)
       setAllPlaces(places)
+      setServices(svc)
       setExisting(entry)
+      setRateCents(entry && isSideJob(entry.employerId) ? entry.rateCents : (s.sideJobRateCents ?? null))
       if (entry) {
         setEmployerId(entry.employerId)
         setStart(entry.start)
         setEnd(entry.end)
         setBreakText(String(entry.breakMin))
         setPlace(entry.place ?? null)
+        setService(entry.service ?? '')
         setOutTouched(true)
       } else {
         const d = defaultsFor(initialDate ?? today(), s)
@@ -189,7 +203,11 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
   const brk = parseBreak(breakText)
   const shift = { start, end, breakMin: brk }
   const valid = DATETIME.test(start) && DATETIME.test(end) && validateShift(shift) === null
-  const saveLabel = valid ? `Save · ${formatDuration(shiftMinutes(shift))}` : 'Save'
+  const sideJob = isSideJob(employerId)
+  const rateOk = rateCents !== null && rateCents > 0
+  const saveLabel = valid
+    ? `Save · ${formatDuration(shiftMinutes(shift))}${sideJob && rateOk ? ` · ${formatUSD(Math.round((shiftMinutes(shift) * rateCents) / 60))}` : ''}`
+    : 'Save'
 
   async function save() {
     const next: typeof errors = {}
@@ -200,26 +218,33 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
       if (v === 'OUT_BEFORE_IN') next.end = 'Out must be after In'
       if (v === 'BREAK_TOO_LONG') next.brk = 'Break is longer than the shift'
     }
+    if (sideJob && !rateOk) next.rate = 'Enter a valid rate'
     setErrors(next)
     const employer = employers.find((e) => e.id === employerId)
-    if (next.start || next.end || next.brk || !employer || saving) return
+    if (next.start || next.end || next.brk || next.rate || !employer || saving) return
 
     setSaving(true)
     setSaveError('')
     const date = start.slice(0, 10)
     const keepRate = existing && existing.employerId === employerId
+    // The rate is remembered for the next side job only from a new entry or from the latest side-job entry.
+    const latest = sideJob ? await repo.latestSideJobEntry().catch(() => undefined) : undefined
+    const remember = sideJob && (!existing || !isSideJob(existing.employerId) || latest?.id === existing.id)
+    const cleanService = service.trim().slice(0, MAX_SERVICE)
     const entry: TimeEntry = {
-      id: existing?.id ?? crypto.randomUUID(),
+      id: existing?.id ?? newId.current,
       employerId,
       start,
       end,
       breakMin: brk,
-      rateCents: keepRate ? existing.rateCents : rateOn(employer, date),
+      rateCents: sideJob ? rateCents! : keepRate ? existing.rateCents : rateOn(employer, date),
+      ...(sideJob && cleanService ? { service: cleanService } : {}),
       ...(place ? { place: { ...place, label: shortAddress(place.label) } } : {}),
     }
     try {
       await repo.saveEntry(entry)
       await repo.rememberEmployer(employerId)
+      if (remember) await repo.saveSettings({ ...(await repo.getSettings()), sideJobRateCents: rateCents! }).catch(() => undefined)
       if (place) await repo.addRecentPlace(place).catch(() => undefined)
       navigate('/')
     } catch {
@@ -238,12 +263,24 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
       </Screen>
     )
   }
-  if (employers.length === 0) {
+
+  const noRealEmployer = !employers.some((e) => !isSideJob(e.id))
+  if (noRealEmployer && !existing && !fixedEmployer && !sideChosen) {
     return (
       <Screen title={title} back="/">
         <p className="mt-6 text-muted">Add an employer first.</p>
         <button type="button" onClick={() => navigate('/settings/employer/new')} className="mt-4 min-h-12 w-full rounded-full bg-accent font-semibold text-accent-fg">
           Add employer
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setEmployerId(SIDE_JOB_ID)
+            setSideChosen(true)
+          }}
+          className="mt-3 min-h-12 w-full rounded-full border border-border font-semibold"
+        >
+          Log a side job
         </button>
       </Screen>
     )
@@ -264,6 +301,31 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
         <div className="mt-2">
           <EmployerPicker employers={employers} value={employerId} onChange={setEmployerId} />
         </div>
+      )}
+
+      {sideJob && (
+        <>
+          <Field label="Service" htmlFor="service">
+            <input
+              id="service"
+              className={inputCls}
+              placeholder="What you did, for whom"
+              autoComplete="off"
+              maxLength={MAX_SERVICE}
+              list="service-suggestions"
+              value={service}
+              onChange={(e) => setService(e.target.value)}
+            />
+            <datalist id="service-suggestions">
+              {services.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+          </Field>
+          <Field label="Hourly rate" htmlFor="side-rate" error={errors.rate}>
+            <MoneyInput id="side-rate" cents={rateCents} onChange={setRateCents} />
+          </Field>
+        </>
       )}
 
       <DateTimeField label="In" value={start} onChange={changeStart} error={errors.start} />
