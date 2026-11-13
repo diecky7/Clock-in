@@ -211,3 +211,36 @@ describe('Home', () => {
     expect(window.location.hash).toBe('#/export?period=week&from=2026-10-04')
   })
 })
+
+describe('Home with Side job', () => {
+  it('lists side-job entries with the service and totals them', async () => {
+    await repo.saveEntry({ id: 's1', employerId: 'side-job', start: '2026-10-06T08:00', end: '2026-10-06T12:00', breakMin: 0, rateCents: 4500, service: 'Fence repair' })
+    await repo.saveSettings({ ...(await repo.getSettings()), homeEmployer: 'side-job' })
+    render(<Home initialDate="2026-10-07" />)
+    expect(await screen.findByText('$180.00')).toBeInTheDocument()
+    expect(screen.getByText('8:00 AM – 12:00 PM')).toBeInTheDocument()
+    expect(screen.getByText('Fence repair')).toBeInTheDocument()
+  })
+
+  it('under All employers the row says Side job and the service', async () => {
+    await seed(false)
+    await repo.saveEntry({ id: 's1', employerId: 'side-job', start: '2026-10-06T18:00', end: '2026-10-06T19:00', breakMin: 0, rateCents: 4500, service: 'Gutter' })
+    await repo.saveSettings({ ...(await repo.getSettings()), homeEmployer: 'all' })
+    render(<Home initialDate="2026-10-07" />)
+    expect(await screen.findByText('Gutter')).toBeInTheDocument()
+    expect(screen.getByText('Side job')).toBeInTheDocument()
+  })
+})
+
+describe('Home employer menu with Side job', () => {
+  it('is hidden without real employers unless Side job was chosen, and Side job never becomes the default', async () => {
+    await repo.saveEntry({ id: 's1', employerId: 'side-job', start: '2026-10-06T08:00', end: '2026-10-06T12:00', breakMin: 0, rateCents: 4500 })
+    const { unmount } = render(<Home initialDate="2026-10-07" />)
+    await screen.findByText('$180.00')
+    expect(screen.queryByRole('button', { name: /^Employer:/ })).not.toBeInTheDocument()
+    unmount()
+    await repo.saveSettings({ ...(await repo.getSettings()), homeEmployer: 'side-job' })
+    render(<Home initialDate="2026-10-07" />)
+    expect(await screen.findByRole('button', { name: /^Employer: Side job/ })).toBeInTheDocument()
+  })
+})

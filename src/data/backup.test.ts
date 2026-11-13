@@ -153,3 +153,40 @@ describe('backup', () => {
     expect(got.every((b, i) => b === big[i])).toBe(true)
   })
 })
+
+describe('backup with Side job', () => {
+  const sideEntry: TimeEntry = {
+    id: 's1', employerId: 'side-job', start: '2026-10-06T08:00', end: '2026-10-06T12:00', breakMin: 0, rateCents: 4500, service: 'Fence repair',
+  }
+  const withSide = { ...settings, sideJobRateCents: 4500 }
+
+  it('keeps side-job entries, service and last rate, and never writes Side job as an employer', async () => {
+    const db = await getDb()
+    await db.put('entries', sideEntry)
+    await db.put('settings', withSide, SETTINGS_KEY)
+    const parsed = JSON.parse(await (await exportBackup()).text())
+    expect(parsed.employers).toEqual([])
+    await resetDbForTests()
+    await importBackup(blob(parsed))
+    const after = await getDb()
+    expect(await after.getAll('entries')).toEqual([sideEntry])
+    expect(await after.getAll('employers')).toEqual([])
+    expect(await after.get('settings', SETTINGS_KEY)).toEqual(withSide)
+  })
+
+  it('a backup file that lists a side-job employer does not store it', async () => {
+    const doc = { ...validDoc(), employers: [employer('e1'), { ...employer('side-job'), name: 'Side job' }] }
+    await importBackup(blob(doc))
+    expect((await (await getDb()).getAll('employers')).map((e) => e.id)).toEqual(['e1'])
+  })
+
+  it('old files without service or sideJobRateCents still import', async () => {
+    await importBackup(blob({ ...validDoc(), entries: [entry('t1')], settings }))
+    expect((await (await getDb()).getAll('entries')).map((e) => e.id)).toEqual(['t1'])
+  })
+
+  it('rejects a bad service or rate', async () => {
+    await expectRejectedUnchanged(blob({ ...validDoc(), entries: [{ ...sideEntry, service: 5 }] }))
+    await expectRejectedUnchanged(blob({ ...validDoc(), settings: { ...settings, sideJobRateCents: -1 } }))
+  })
+})

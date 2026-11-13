@@ -74,3 +74,11 @@ describe('renderPdf', () => {
     expect(doc.getPageCount()).toBe(2)
   })
 })
+
+describe('renderPdf side-job rows', () => {
+  it('a long service and a rate on a row render without throwing', async () => {
+    const detail = '$35.00/h · ' + 'Replaced the rotten boards on the back porch for the neighbors '.repeat(3)
+    const doc = await load([model({ employerName: 'Side job', rateLabel: '$20.00–$35.00/h', days: [{ label: 'Mon, Oct 5', hours: '8h 00m', detail }] })])
+    expect(doc.getPageCount()).toBe(1)
+  })
+})
