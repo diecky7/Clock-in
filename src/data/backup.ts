@@ -97,7 +97,7 @@ const validSettings = (r: unknown): r is Settings =>
 const validPayment = (r: unknown): r is Payment =>
   isObj(r) && isStr(r.id) && isDate(r.date) &&
   isArr(r.entryIds) && r.entryIds.every(isStr) && isArr(r.expenseIds) && r.expenseIds.every(isStr) &&
-  isCents(r.expectedCents) && isCents(r.receivedCents) && (r.method === 'cash' || r.method === 'zelle') &&
+  isCents(r.expectedCents) && isCents(r.receivedCents) && (r.method === 'cash' || r.method === 'zelle' || r.method === 'marked') &&
   (r.accountId === undefined || isStr(r.accountId)) && isBool(r.keepShortfall) && isNum(r.createdAt) &&
   (r.itemCents === undefined || (isObj(r.itemCents) && Object.values(r.itemCents).every(isNum)))
 const validPhoto = (r: unknown): r is PhotoJson =>

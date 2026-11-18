@@ -229,6 +229,27 @@ describe('Home', () => {
     expect(await screen.findByRole('dialog', { name: 'Payment received' })).toBeInTheDocument()
   })
 
+  it('tapping an open row lists what is still open; a received payment lists what it paid for', async () => {
+    await seed()
+    await repo.savePayment({ id: 'p1', date: '2026-10-09', entryIds: ['t1'], expenseIds: [], expectedCents: 24000, receivedCents: 24000,
+      method: 'cash', keepShortfall: false, itemCents: { t1: 24000 }, createdAt: 1 })
+    const user = userEvent.setup()
+    render(<Home initialDate="2026-10-07" />)
+    const list = await screen.findByRole('list', { name: 'This week' })
+    const buttons = within(list).getAllByRole('button')
+    await user.click(buttons.find((b) => !b.textContent?.includes('Received'))!)
+    const open = await screen.findByRole('dialog', { name: 'Still to receive' })
+    expect(within(open).getByText('$1,175.50')).toBeInTheDocument()
+    expect(within(within(open).getByRole('list', { name: 'Open' })).getAllByRole('listitem')).toHaveLength(5) // 4 shifts + expense
+    await user.click(within(open).getByRole('button', { name: 'Close' }))
+
+    await user.click(buttons.find((b) => b.textContent?.includes('Received'))!)
+    const paidFor = await screen.findByRole('list', { name: 'Paid for' })
+    expect(within(paidFor).getAllByRole('listitem')).toHaveLength(1)
+    expect(paidFor).toHaveTextContent('7:00 AM – 3:00 PM')
+    expect(paidFor).toHaveTextContent('$240.00')
+  })
+
   it('deleting a row can be undone from the toast', async () => {
     await seed(false)
     const user = userEvent.setup()

@@ -1,4 +1,5 @@
 import Modal from '../components/Modal'
+import MarkReceivedDialog from '../components/MarkReceivedDialog'
 import DateTimeField from '../components/DateTimeField'
 import { formatDay } from '../domain/time'
 import { addDays } from '../domain/weeks'
@@ -43,6 +44,7 @@ export default function Settings() {
   const [settings, setSettings] = useState<SettingsData | null>(null)
 
   const [pendingImport, setPendingImport] = useState<File | null>(null)
+  const [marking, setMarking] = useState(false)
   const [dataMsg, setDataMsg] = useState<{ text: string; error: boolean } | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
@@ -241,7 +243,13 @@ export default function Settings() {
             }}
           />
         </div>
+        <div className={divider}>
+          <button type="button" className={rowCls} onClick={() => setMarking(true)}>
+            Mark older work as received
+          </button>
+        </div>
       </Section>
+      {marking && <MarkReceivedDialog onClose={() => setMarking(false)} />}
       {dataMsg && (
         <p role={dataMsg.error ? 'alert' : 'status'} className={`mt-3 text-sm ${dataMsg.error ? 'text-danger' : 'text-muted'}`}>
           {dataMsg.text}

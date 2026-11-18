@@ -81,7 +81,8 @@ export interface Payment {
   /** What the chosen items were worth when the payment was logged. */
   expectedCents: number
   receivedCents: number
-  method: 'cash' | 'zelle'
+  /** 'marked': settled in bulk for older work, without the details of how it was paid. */
+  method: 'cash' | 'zelle' | 'marked'
   /** Zelle only: the account it went to. */
   accountId?: string
   /** Received less than expected and the rest is still owed. */
