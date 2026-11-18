@@ -47,3 +47,18 @@ input[type='datetime-local'] {
   appearance: none;
   min-width: 0;
 }
+
+/* Undo toast: slides up, and its bar runs out while the Undo button is available. */
+@keyframes undo-in {
+  from { transform: translateY(1rem); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes undo-bar {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+.undo-toast { animation: undo-in 180ms ease-out; }
+.undo-bar { animation-name: undo-bar; animation-timing-function: linear; animation-fill-mode: forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .undo-toast { animation: none; }
+}

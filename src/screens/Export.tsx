@@ -6,7 +6,8 @@ import { computeRange, computeWeek } from '../domain/pay'
 import { today } from '../domain/today'
 import type { Employer } from '../domain/types'
 import { addDays, weekStartOf } from '../domain/weeks'
-import { biweekAnchorFor, PERIOD_KINDS, PERIOD_WORDS, periodEnd, periodLabel, periodStart, shiftPeriod, type PeriodKind } from '../domain/periods'
+import { ALL_EMPLOYERS } from '../domain/employers'
+import { anchorFor, PERIOD_KINDS, PERIOD_WORDS, periodEnd, periodLabel, periodStart, shiftPeriod, type PeriodKind } from '../domain/periods'
 import { defaultOptions, type ReportOptions } from '../export/options'
 import { renderPdf } from '../export/pdf'
 import { buildReportModel } from '../export/report'
@@ -59,14 +60,14 @@ export default function Export({
     let alive = true
     void Promise.all([repo.getSettings(), repo.listEmployers()]).then(([s, emps]) => {
       if (!alive) return
-      const anchor = biweekAnchorFor(emps, s.lastEmployerId, s.biweeklyStart)
+      const anchor = anchorFor(emps, only ?? ALL_EMPLOYERS, s.lastEmployerId, s.biweeklyStart)
       setCfg({ weekStartsOn: s.weekStartsOn, anchor })
       setFrom(periodStart(period ?? 'week', fromParam ?? week ?? today(), s.weekStartsOn, anchor))
     })
     return () => {
       alive = false
     }
-  }, [week, period, fromParam])
+  }, [week, period, fromParam, only])
 
   const to = from ? periodEnd(kind, from) : null
 

@@ -62,4 +62,31 @@ export interface Settings {
   hiddenPlaces?: string[]
   /** Hourly rate (cents) of the last side job; pre-fills the next one. */
   sideJobRateCents?: number
+  /** Bank accounts that can receive a Zelle payment. */
+  accounts?: Account[]
+}
+
+export interface Account {
+  id: string
+  name: string
+}
+
+/** Money received for a set of entries and expenses. */
+export interface Payment {
+  id: string
+  /** Day it was received (YYYY-MM-DD). */
+  date: string
+  entryIds: string[]
+  expenseIds: string[]
+  /** What the chosen items were worth when the payment was logged. */
+  expectedCents: number
+  receivedCents: number
+  method: 'cash' | 'zelle'
+  /** Zelle only: the account it went to. */
+  accountId?: string
+  /** Received less than expected and the rest is still owed. */
+  keepShortfall: boolean
+  /** What each item was worth when paid (exact cents); an item that later grows owes the difference. */
+  itemCents?: Record<string, number>
+  createdAt: number
 }

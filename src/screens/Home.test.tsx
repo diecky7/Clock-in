@@ -5,6 +5,8 @@ import { resetDbForTests } from '../data/db'
 import * as repo from '../data/repo'
 import type { Employer, Expense, TimeEntry } from '../domain/types'
 import Home from './Home'
+import UndoToast from '../components/UndoToast'
+import { dismissUndo } from '../undo'
 
 const acme: Employer = { id: 'e1', name: 'Acme', overtimeEnabled: false, archived: false, rates: [{ from: '2026-01-01', cents: 3000 }] }
 
@@ -30,6 +32,7 @@ async function seed(withExpense = true) {
 beforeEach(async () => {
   await resetDbForTests()
   window.location.hash = ''
+  dismissUndo()
 })
 
 describe('Home', () => {
@@ -179,6 +182,66 @@ describe('Home', () => {
     await user.click(screen.getByRole('button', { name: 'Yes, delete' }))
     await waitFor(() => expect(within(screen.getByRole('list', { name: 'This week' })).getAllByRole('listitem')).toHaveLength(4))
     expect(await repo.getEntry('t1')).toBeUndefined()
+  })
+
+  it('shows what is still to receive, marks received rows, and a received row opens its payment to undo it', async () => {
+    await seed()
+    // t1 ($240) and the expense ($175.50) received; $20 short, kept as owed.
+    await repo.savePayment({ id: 'p1', date: '2026-10-09', entryIds: ['t1'], expenseIds: ['x1'], expectedCents: 41550, receivedCents: 39550,
+      method: 'zelle', accountId: 'a1', keepShortfall: true, createdAt: 1 })
+    await repo.saveSettings({ ...(await repo.getSettings()), accounts: [{ id: 'a1', name: 'Santander' }] })
+    const user = userEvent.setup()
+    render(<><Home initialDate="2026-10-07" /><UndoToast /></>)
+    expect(await screen.findByText('$1,415.50')).toBeInTheDocument() // the total is unchanged
+    expect(await screen.findByText('To receive $1,020.00')).toBeInTheDocument() // $1,415.50 − $415.50 + $20.00
+    const list = screen.getByRole('list', { name: 'This week' })
+    const received = within(list).getAllByRole('button').filter((b) => b.textContent?.includes('Received'))
+    expect(received).toHaveLength(2)
+
+    await user.click(received[0])
+    const dialog = await screen.findByRole('dialog', { name: 'Payment received' })
+    expect(dialog).toHaveTextContent('Zelle · Santander')
+    expect(dialog).toHaveTextContent('−$20.00 · still to receive')
+    await user.click(within(dialog).getByRole('button', { name: 'Undo payment' }))
+    expect(await screen.findByText('To receive $1,415.50')).toBeInTheDocument()
+    expect(await repo.listPayments()).toEqual([])
+
+    // The toast puts it back.
+    await user.click(await screen.findByRole('button', { name: 'Undo' }))
+    expect(await screen.findByText('To receive $1,020.00')).toBeInTheDocument()
+    expect(await repo.listPayments()).toHaveLength(1)
+  })
+
+  it('holding a received row opens only the menu, which offers View payment', async () => {
+    await seed(false)
+    await repo.savePayment({ id: 'p1', date: '2026-10-09', entryIds: ['t1'], expenseIds: [], expectedCents: 24000, receivedCents: 24000,
+      method: 'cash', keepShortfall: false, createdAt: 1 })
+    const user = userEvent.setup()
+    render(<Home initialDate="2026-10-07" />)
+    const list = await screen.findByRole('list', { name: 'This week' })
+    const row = within(list).getAllByRole('button').find((b) => b.textContent?.includes('Received'))!
+    fireEvent.pointerDown(row)
+    await new Promise((r) => setTimeout(r, 560))
+    fireEvent.pointerUp(row)
+    fireEvent.click(row, { detail: 1 })
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'View payment' }))
+    expect(await screen.findByRole('dialog', { name: 'Payment received' })).toBeInTheDocument()
+  })
+
+  it('deleting a row can be undone from the toast', async () => {
+    await seed(false)
+    const user = userEvent.setup()
+    render(<><Home initialDate="2026-10-07" /><UndoToast /></>)
+    const list = await screen.findByRole('list', { name: 'This week' })
+    fireEvent.pointerDown(within(list).getAllByRole('button').at(-1)!)
+    await new Promise((r) => setTimeout(r, 560))
+    await user.click(await screen.findByRole('button', { name: 'Delete' }))
+    await user.click(screen.getByRole('button', { name: 'Yes, delete' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Entry deleted')
+    await user.click(screen.getByRole('button', { name: 'Undo' }))
+    await waitFor(() => expect(within(screen.getByRole('list', { name: 'This week' })).getAllByRole('listitem')).toHaveLength(5))
+    expect(await repo.getEntry('t1')).toBeDefined()
   })
 
   it('a short press does not open the menu', async () => {

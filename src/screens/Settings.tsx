@@ -17,6 +17,7 @@ import { today } from '../domain/today'
 import type { Employer, Settings as SettingsData } from '../domain/types'
 import { DEFAULT_NEARBY_FT } from '../location/distance'
 import { navigate } from '../router'
+import { DATA_CHANGED, offerUndo } from '../undo'
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -58,10 +59,13 @@ export default function Settings() {
       setEmployers(e)
       setSettings(s)
     })
+    const onUndo = () => void reload()
+    window.addEventListener(DATA_CHANGED, onUndo)
     return () => {
       alive = false
+      window.removeEventListener(DATA_CHANGED, onUndo)
     }
-  }, [])
+  }, [reload])
 
   async function doExport() {
     setDataMsg(null)
@@ -93,9 +97,13 @@ export default function Settings() {
 
   async function patch(partial: Partial<SettingsData>) {
     if (!settings) return
+    const before = settings
     const next = { ...settings, ...partial }
     setSettings(next)
     await repo.saveSettings(next)
+    // Put back only the fields this change touched, so a later change isn't lost.
+    const old = Object.fromEntries(Object.keys(partial).map((k) => [k, before[k as keyof SettingsData]])) as Partial<SettingsData>
+    offerUndo('Setting changed', async () => repo.saveSettings({ ...(await repo.getSettings()), ...old }))
   }
 
   const now = today()
@@ -180,6 +188,31 @@ export default function Settings() {
               ))}
             </select>
           </div>
+        </Section>
+      )}
+
+      {settings && (settings.accounts ?? []).length > 0 && (
+        <Section title="Accounts">
+          {(settings.accounts ?? []).map((a) => (
+            <div key={a.id} className={`${rowCls} ${divider}`}>
+              <span className="truncate">{a.name}</span>
+              <button
+                type="button"
+                aria-label={`Delete ${a.name}`}
+                className="min-h-11 shrink-0 px-2 text-base text-danger"
+                onClick={() => {
+                  void (async () => {
+                    const before = settings.accounts ?? []
+                    await repo.deleteAccount(a.id)
+                    setSettings({ ...settings, accounts: before.filter((x) => x.id !== a.id) })
+                    offerUndo(`Account “${a.name}” deleted`, async () => repo.saveSettings({ ...(await repo.getSettings()), accounts: before }))
+                  })()
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          ))}
         </Section>
       )}
 

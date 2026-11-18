@@ -16,6 +16,7 @@ import { getCurrentPosition, reverseGeocode, searchAddress } from '../location/g
 import { copyText, placeKey, shortAddress } from '../location/address'
 import { DEFAULT_NEARBY_FT, formatDistance, nearestWithin } from '../location/distance'
 import { navigate } from '../router'
+import { offerUndo } from '../undo'
 
 // The map library is large; load it only when this form opens.
 const MapPicker = lazy(() => import('../location/MapPicker'))
@@ -246,6 +247,8 @@ export default function EntryForm({ id, initialDate }: { id?: string; initialDat
       await repo.rememberEmployer(employerId)
       if (remember) await repo.saveSettings({ ...(await repo.getSettings()), sideJobRateCents: rateCents! }).catch(() => undefined)
       if (place) await repo.addRecentPlace(place).catch(() => undefined)
+      const prev = existing
+      offerUndo(prev ? 'Entry updated' : 'Entry added', () => (prev ? repo.saveEntry(prev) : repo.deleteEntry(entry.id)))
       navigate('/')
     } catch {
       setSaveError("Couldn't save. Free some space on your iPhone and try again.")

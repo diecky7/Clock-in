@@ -11,14 +11,17 @@ import { formatUSD } from '../domain/money'
 import { computeWeek } from '../domain/pay'
 import { formatClock, formatDuration, shiftMinutes } from '../domain/time'
 import { today } from '../domain/today'
-import type { Employer, Expense, TimeEntry } from '../domain/types'
+import type { Account, Employer, Expense, Payment, TimeEntry } from '../domain/types'
+import { itemValues, paidBy, toReceiveCents } from '../domain/payments'
+import PaymentDialog from '../components/PaymentDialog'
 import { addDays, weekStartOf } from '../domain/weeks'
-import { biweekAnchorFor, PERIOD_WORDS, periodEnd, periodLabel, periodStart, shiftPeriod, type PeriodKind } from '../domain/periods'
+import { anchorFor, PERIOD_WORDS, periodEnd, periodLabel, periodStart, shiftPeriod, type PeriodKind } from '../domain/periods'
 import { summarizePeriod } from '../domain/summary'
 import PeriodPicker from '../components/PeriodPicker'
 import Dropdown from '../components/Dropdown'
 import { ALL_EMPLOYERS, SIDE_JOB_ID, activeEmployers, homeEmployerFor, isSideJob } from '../domain/employers'
 import { navigate } from '../router'
+import { DATA_CHANGED, offerUndo } from '../undo'
 
 const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -28,18 +31,30 @@ function dayLabel(date: string): string {
 }
 
 type Row =
-  | { kind: 'entry'; id: string; date: string; sort: string; employer: string; service?: string; hours: string }
-  | { kind: 'expense'; id: string; date: string; sort: string; description: string; amount: string }
+  | { kind: 'entry'; id: string; date: string; sort: string; employer: string; service?: string; hours: string; paid: boolean }
+  | { kind: 'expense'; id: string; date: string; sort: string; description: string; amount: string; paid: boolean }
 
-function RowButton({ row, onOpen }: { row: Row; onOpen: () => void }) {
-  const press = useLongPress(onOpen, 500)
+/** Small check on rows already received; a blank of the same width keeps the numbers lined up. */
+function Paid({ on }: { on: boolean }) {
+  return (
+    <span className={`w-4 shrink-0 text-center text-sm ${on ? 'text-muted' : ''}`}>
+      <span aria-hidden>{on ? '✓' : ''}</span>
+      {on && <span className="sr-only">Received</span>}
+    </span>
+  )
+}
+
+function RowButton({ row, onOpen, onTap }: { row: Row; onOpen: () => void; onTap?: () => void }) {
+  const { consumeHold, ...press } = useLongPress(onOpen, 500)
   return (
     <button
       type="button"
       {...press}
       onClick={(e) => {
+        if (consumeHold()) return
         // detail === 0 means keyboard / VoiceOver activation: no finger to hold.
         if (e.detail === 0) onOpen()
+        else onTap?.()
       }}
       onContextMenu={(e) => {
         e.preventDefault()
@@ -59,6 +74,7 @@ function RowButton({ row, onOpen }: { row: Row; onOpen: () => void }) {
             <span className="flex-1 truncate">{row.employer}</span>
           )}
           <span className="tabular-nums">{row.hours}</span>
+          <Paid on={row.paid} />
         </>
       ) : (
         <>
@@ -67,16 +83,11 @@ function RowButton({ row, onOpen }: { row: Row; onOpen: () => void }) {
             <span className="truncate">{row.description}</span>
           </span>
           <span className="tabular-nums">{row.amount}</span>
+          <Paid on={row.paid} />
         </>
       )}
     </button>
   )
-}
-
-/** Two-week pay periods: the chosen employer's own, or for all employers the usual pick. */
-function anchorFor(employers: Employer[], who: string, lastEmployerId?: string, defaultStart?: string): string | undefined {
-  if (who === ALL_EMPLOYERS || isSideJob(who)) return biweekAnchorFor(employers, lastEmployerId, defaultStart)
-  return employers.find((e) => e.id === who)?.biweeklyStart || defaultStart || undefined
 }
 
 export default function Home({ initialDate }: { initialDate?: string }) {
@@ -89,6 +100,9 @@ export default function Home({ initialDate }: { initialDate?: string }) {
   const [employers, setEmployers] = useState<Employer[]>([])
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [payments, setPayments] = useState<Payment[]>([])
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [viewing, setViewing] = useState<Payment | null>(null)
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
   const [choosing, setChoosing] = useState(false)
   const [menu, setMenu] = useState<MenuTarget | null>(null)
@@ -122,14 +136,18 @@ export default function Home({ initialDate }: { initialDate?: string }) {
       // Whole work weeks around the period, so overtime is judged on the full week.
       const wFrom = weekStartOf(start, weekStartsOn)
       const wTo = addDays(weekStartOf(end, weekStartsOn), 6)
-      const [emps, ents, exps] = await Promise.all([
+      const [emps, ents, exps, pays, s] = await Promise.all([
         repo.listEmployers(),
         repo.listEntriesBetween(wFrom, wTo),
         repo.listExpensesBetween(start, end),
+        repo.listPayments(),
+        repo.getSettings(),
       ])
       setEmployers(emps)
       setEntries(ents)
       setExpenses(exps)
+      setPayments(pays)
+      setAccounts(s.accounts ?? [])
       setLoadedFor(k)
     },
     [weekStartsOn],
@@ -138,11 +156,15 @@ export default function Home({ initialDate }: { initialDate?: string }) {
   useEffect(() => {
     if (!from || !to || !key) return
     let alive = true
-    void load(from, to, key).catch(() => {
-      if (alive) setLoadedFor(key)
-    })
+    const run = () =>
+      void load(from, to, key).catch(() => {
+        if (alive) setLoadedFor(key)
+      })
+    run()
+    window.addEventListener(DATA_CHANGED, run)
     return () => {
       alive = false
+      window.removeEventListener(DATA_CHANGED, run)
     }
   }, [from, to, key, load])
 
@@ -189,6 +211,12 @@ export default function Home({ initialDate }: { initialDate?: string }) {
     [mine, from, to],
   )
 
+  const paid = useMemo(() => paidBy(payments), [payments])
+  const toReceive = useMemo(() => {
+    const values = itemValues(entries, mine.expenses, employers, weekStartsOn)
+    return toReceiveCents([...shown.map((e) => e.id), ...mine.expenses.map((x) => x.id)], values, payments)
+  }, [entries, mine, employers, weekStartsOn, shown, payments])
+
   const rows = useMemo<Row[]>(() => {
     const names = new Map(employers.map((e) => [e.id, e.name]))
     const list: Row[] = [
@@ -201,6 +229,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         employer: who === ALL_EMPLOYERS ? (names.get(e.employerId) ?? 'Employer') : `${formatClock(e.start.slice(11, 16))} – ${formatClock(e.end.slice(11, 16))}`,
         ...(e.service ? { service: e.service } : {}),
         hours: formatDuration(shiftMinutes(e)),
+        paid: paid.has(e.id),
       })),
       ...mine.expenses.map<Row>((x) => ({
         kind: 'expense',
@@ -209,11 +238,12 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         sort: `${x.date}T99:99`,
         description: x.description,
         amount: formatUSD(x.amountCents),
+        paid: paid.has(x.id),
       })),
     ]
     // Most recent first.
     return list.sort((a, b) => b.sort.localeCompare(a.sort))
-  }, [shown, mine, employers, who])
+  }, [shown, mine, employers, who, paid])
 
   if (!from || !to || !summary) return <main aria-label="Time clock" />
   const whoName = who === ALL_EMPLOYERS ? 'All employers' : (employers.find((e) => e.id === who)?.name ?? 'Employer')
@@ -229,8 +259,15 @@ export default function Home({ initialDate }: { initialDate?: string }) {
 
   async function remove() {
     if (!menu || !from || !to || !key) return
-    if (menu.kind === 'entry') await repo.deleteEntry(menu.id)
-    else await repo.deleteExpense(menu.id)
+    if (menu.kind === 'entry') {
+      const before = await repo.getEntry(menu.id)
+      await repo.deleteEntry(menu.id)
+      if (before) offerUndo('Entry deleted', () => repo.saveEntry(before))
+    } else {
+      const before = await repo.snapshotExpense(menu.id)
+      await repo.deleteExpense(menu.id)
+      offerUndo('Expense deleted', () => repo.restoreExpense(before))
+    }
     setMenu(null)
     setConfirming(false)
     await load(from, to, key)
@@ -305,6 +342,9 @@ export default function Home({ initialDate }: { initialDate?: string }) {
       <section aria-label="Balance" className="mt-10 text-center">
         <p className="text-6xl font-semibold tabular-nums tracking-tight">{formatUSD(summary.totalCents)}</p>
         <p className="mt-2 text-base text-muted">{detail}</p>
+        {settled && rows.length > 0 && (
+          <p className="mt-1 text-sm text-muted">{toReceive > 0 ? `To receive ${formatUSD(toReceive)}` : 'All received'}</p>
+        )}
       </section>
 
       <div className="mt-10">
@@ -316,6 +356,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
               <li key={`${r.kind}-${r.id}`}>
                 <RowButton
                   row={r}
+                  onTap={r.paid ? () => setViewing(paid.get(r.id) ?? null) : undefined}
                   onOpen={() => {
                     setConfirming(false)
                     setMenu({ kind: r.kind, id: r.id })
@@ -338,7 +379,27 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         <PlusIcon />
       </button>
 
-      {choosing && <NewChoiceSheet onClose={() => setChoosing(false)} />}
+      {choosing && (
+        <NewChoiceSheet
+          onClose={() => setChoosing(false)}
+          paymentPath={`/payment/new?period=${kind}&from=${from}${who === ALL_EMPLOYERS ? '' : `&employer=${who}`}`}
+        />
+      )}
+      {viewing && (
+        <PaymentDialog
+          payment={viewing}
+          account={accounts.find((a) => a.id === viewing.accountId)?.name}
+          onClose={() => setViewing(null)}
+          onUndo={() => {
+            const p = viewing
+            setViewing(null)
+            void repo.deletePayment(p.id).then(() => {
+              offerUndo('Payment undone', () => repo.savePayment(p))
+              return load(from, to, key!)
+            })
+          }}
+        />
+      )}
       {menu && (
         <LongPressMenu
           target={menu}
@@ -346,6 +407,14 @@ export default function Home({ initialDate }: { initialDate?: string }) {
           onClose={closeMenu}
           onEdit={() => navigate(menu.kind === 'entry' ? `/entry/${menu.id}` : `/expense/${menu.id}`)}
           onAskDelete={() => setConfirming(true)}
+          onViewPayment={
+            paid.has(menu.id)
+              ? () => {
+                  setViewing(paid.get(menu.id) ?? null)
+                  setMenu(null)
+                }
+              : undefined
+          }
           onConfirmDelete={() => void remove()}
         />
       )}

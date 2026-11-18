@@ -1,3 +1,4 @@
+import { DATA_CHANGED, offerUndo } from '../undo'
 import { useEffect, useRef, useState } from 'react'
 import Modal from '../components/Modal'
 import { CopyIcon, FoldedMapIcon, NavArrowIcon, RoutePinIcon } from '../components/icons'
@@ -208,15 +209,19 @@ export default function Places() {
 
   useEffect(() => {
     let alive = true
-    void Promise.all([repo.listAllPlaces(), repo.listEmployers()])
-      .then(([all, emps]) => {
-        if (!alive) return
-        setPlaces(all)
-        setEmployers(emps)
-      })
-      .catch(() => alive && setPlaces([]))
+    const load = () =>
+      void Promise.all([repo.listAllPlaces(), repo.listEmployers()])
+        .then(([all, emps]) => {
+          if (!alive) return
+          setPlaces(all)
+          setEmployers(emps)
+        })
+        .catch(() => alive && setPlaces([]))
+    load()
+    window.addEventListener(DATA_CHANGED, load)
     return () => {
       alive = false
+      window.removeEventListener(DATA_CHANGED, load)
     }
   }, [])
 
@@ -268,7 +273,11 @@ export default function Places() {
             const gone = placeKey(picked.label)
             setPicked(null)
             setPlaces((all) => (all ?? []).filter((p) => placeKey(p.label) !== gone))
-            void repo.deletePlace(picked.label)
+            void (async () => {
+              const { recentPlaces, hiddenPlaces } = await repo.getSettings()
+              await repo.deletePlace(picked.label)
+              offerUndo('Address deleted', () => repo.restorePlaces({ recentPlaces, hiddenPlaces }))
+            })()
           }}
         />
       )}

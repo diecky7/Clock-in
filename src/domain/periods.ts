@@ -1,4 +1,5 @@
 import { monthRange } from './summary'
+import { ALL_EMPLOYERS, SIDE_JOB_ID } from './employers'
 import type { Employer } from './types'
 import { addDays, weekLabel, weekStartOf } from './weeks'
 
@@ -71,4 +72,14 @@ export const PERIOD_WORDS: Record<PeriodKind, { unit: string; this: string }> = 
   week: { unit: 'week', this: 'this week' },
   biweek: { unit: 'two weeks', this: 'these two weeks' },
   month: { unit: 'month', this: 'this month' },
+}
+
+/**
+ * The two-week period start for the home screen's employer choice: that employer's own date, else the default from
+ * Settings. For all employers (or Side job), the Settings default, else an employer's date. Home, Export and Receive
+ * payment all use this, so they show the same two weeks.
+ */
+export function anchorFor(employers: Employer[], who: string, lastEmployerId?: string, defaultStart?: string): string | undefined {
+  if (who === ALL_EMPLOYERS || who === SIDE_JOB_ID) return biweekAnchorFor(employers, lastEmployerId, defaultStart)
+  return employers.find((e) => e.id === who)?.biweeklyStart || defaultStart || undefined
 }
