@@ -7,6 +7,16 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.11.0',
+    date: '2026-11-18',
+    changes: [
+      'Smaller Undo notice',
+      'A received payment lists the entries and expenses it paid for',
+      'Tap an open row to see what is still to receive in the period, with a Receive payment shortcut',
+      'Settings → Mark older work as received: settles everything before the latest two weeks with data',
+    ],
+  },
+  {
     version: '1.10.0',
     date: '2026-11-18',
     changes: [

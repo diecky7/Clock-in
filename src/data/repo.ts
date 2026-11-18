@@ -1,6 +1,7 @@
 import { shiftMinutes } from '../domain/time'
 import { placeKey, shortAddress } from '../location/address'
 import { SIDE_JOB } from '../domain/employers'
+import { itemValues, paidBy } from '../domain/payments'
 import type { Account, Employer, Expense, Payment, Place, Settings, TimeEntry } from '../domain/types'
 import {
   getDb,
@@ -334,4 +335,32 @@ export async function deleteEmployer(id: string): Promise<void> {
 export async function restorePlaces(prev: Pick<Settings, 'recentPlaces' | 'hiddenPlaces'>): Promise<void> {
   const s = await getSettings()
   await saveSettings({ ...s, recentPlaces: prev.recentPlaces, hiddenPlaces: prev.hiddenPlaces })
+}
+
+/**
+ * Everything dated before `date` that isn't received yet, with its value. Used to settle older work in bulk.
+ */
+export async function unpaidBefore(date: string): Promise<{ entries: TimeEntry[]; expenses: Expense[]; itemCents: Record<string, number> }> {
+  const db = await getDb()
+  const [allEntries, allExpenses, employers, payments, s] = await Promise.all([
+    db.getAll(STORE_ENTRIES),
+    db.getAll(STORE_EXPENSES),
+    listEmployers(),
+    listPayments(),
+    getSettings(),
+  ])
+  const paid = paidBy(payments)
+  // Values use whole work weeks (overtime), so they're worked out from every entry.
+  const values = itemValues(allEntries, allExpenses, employers, s.weekStartsOn)
+  const entries = allEntries.filter((e) => e.start.slice(0, 10) < date && !paid.has(e.id))
+  const expenses = allExpenses.filter((x) => x.date < date && !paid.has(x.id))
+  const itemCents = Object.fromEntries([...entries, ...expenses].map((i) => [i.id, values.get(i.id) ?? 0]))
+  return { entries, expenses, itemCents }
+}
+
+/** Last day that has an entry or expense ('' when there is nothing). */
+export async function latestDataDate(): Promise<string> {
+  const db = await getDb()
+  const [entries, expenses] = await Promise.all([db.getAll(STORE_ENTRIES), db.getAll(STORE_EXPENSES)])
+  return [...entries.map((e) => e.start.slice(0, 10)), ...expenses.map((x) => x.date)].reduce((a, b) => (b > a ? b : a), '')
 }

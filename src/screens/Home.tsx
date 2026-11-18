@@ -14,6 +14,8 @@ import { today } from '../domain/today'
 import type { Account, Employer, Expense, Payment, TimeEntry } from '../domain/types'
 import { itemValues, paidBy, toReceiveCents } from '../domain/payments'
 import PaymentDialog from '../components/PaymentDialog'
+import OpenDialog from '../components/OpenDialog'
+import type { ListedItem } from '../components/ItemRows'
 import { addDays, weekStartOf } from '../domain/weeks'
 import { anchorFor, PERIOD_WORDS, periodEnd, periodLabel, periodStart, shiftPeriod, type PeriodKind } from '../domain/periods'
 import { summarizePeriod } from '../domain/summary'
@@ -103,6 +105,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
   const [payments, setPayments] = useState<Payment[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [viewing, setViewing] = useState<Payment | null>(null)
+  const [showOpen, setShowOpen] = useState(false)
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
   const [choosing, setChoosing] = useState(false)
   const [menu, setMenu] = useState<MenuTarget | null>(null)
@@ -212,10 +215,23 @@ export default function Home({ initialDate }: { initialDate?: string }) {
   )
 
   const paid = useMemo(() => paidBy(payments), [payments])
-  const toReceive = useMemo(() => {
-    const values = itemValues(entries, mine.expenses, employers, weekStartsOn)
-    return toReceiveCents([...shown.map((e) => e.id), ...mine.expenses.map((x) => x.id)], values, payments)
-  }, [entries, mine, employers, weekStartsOn, shown, payments])
+  const values = useMemo(() => itemValues(entries, mine.expenses, employers, weekStartsOn), [entries, mine, employers, weekStartsOn])
+  const toReceive = useMemo(
+    () => toReceiveCents([...shown.map((e) => e.id), ...mine.expenses.map((x) => x.id)], values, payments),
+    [values, shown, mine, payments],
+  )
+  // Open = not paid yet; "other" = still owed on items that were paid (kept shortfall, grown after payment).
+  const open = useMemo<ListedItem[]>(
+    () => [
+      ...shown.filter((e) => !paid.has(e.id)).map((e) => ({ kind: 'entry' as const, item: e, cents: values.get(e.id) })),
+      ...mine.expenses.filter((x) => !paid.has(x.id)).map((x) => ({ kind: 'expense' as const, item: x, cents: x.amountCents })),
+    ],
+    [shown, mine, paid, values],
+  )
+  const otherOwed = useMemo(
+    () => toReceiveCents([...shown, ...mine.expenses].map((i) => i.id).filter((id) => paid.has(id)), values, payments),
+    [shown, mine, paid, values, payments],
+  )
 
   const rows = useMemo<Row[]>(() => {
     const names = new Map(employers.map((e) => [e.id, e.name]))
@@ -356,7 +372,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
               <li key={`${r.kind}-${r.id}`}>
                 <RowButton
                   row={r}
-                  onTap={r.paid ? () => setViewing(paid.get(r.id) ?? null) : undefined}
+                  onTap={r.paid ? () => setViewing(paid.get(r.id) ?? null) : () => setShowOpen(true)}
                   onOpen={() => {
                     setConfirming(false)
                     setMenu({ kind: r.kind, id: r.id })
@@ -383,6 +399,19 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         <NewChoiceSheet
           onClose={() => setChoosing(false)}
           paymentPath={`/payment/new?period=${kind}&from=${from}${who === ALL_EMPLOYERS ? '' : `&employer=${who}`}`}
+        />
+      )}
+      {showOpen && (
+        <OpenDialog
+          items={open}
+          toReceiveCents={toReceive}
+          otherCents={otherOwed}
+          periodLabel={periodLabel(kind, from)}
+          onClose={() => setShowOpen(false)}
+          onReceive={() => {
+            setShowOpen(false)
+            navigate(`/payment/new?period=${kind}&from=${from}${who === ALL_EMPLOYERS ? '' : `&employer=${who}`}`)
+          }}
         />
       )}
       {viewing && (
