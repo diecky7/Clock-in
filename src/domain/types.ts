@@ -54,6 +54,8 @@ export interface Settings {
   lastEmployerId?: string
   /** Period shown on the home screen. Default week. */
   homePeriod?: 'week' | 'biweek' | 'month'
+  /** Default first day of a two-week period (YYYY-MM-DD); the rest follow every 14 days. An employer's own date wins. */
+  biweeklyStart?: string
   /** Employer chosen on the home screen ('all' for every employer). New entries and expenses go to it. */
   homeEmployer?: string
   /** Addresses removed from the address book (placeKey), so past entries don't bring them back. */

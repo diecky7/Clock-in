@@ -90,7 +90,7 @@ export default function EmployerEdit({ id }: { id: string }) {
 
       <DateTimeField type="date" label="Biweekly pay period starts on" value={biweekly} onChange={setBiweekly} className="mt-6" />
       <div className="mt-2 flex items-start justify-between gap-3">
-        <p className="text-sm text-muted">Any first day of a two-week period. The next ones follow every 14 days.</p>
+        <p className="text-sm text-muted">Only if this employer differs from the default in Settings. The next ones follow every 14 days.</p>
         {biweekly && (
           <button type="button" onClick={() => setBiweekly('')} className="-mt-2 min-h-11 shrink-0 px-2 text-sm text-muted">
             Clear

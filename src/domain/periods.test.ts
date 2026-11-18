@@ -30,6 +30,8 @@ describe('periods', () => {
     expect(biweekAnchorFor([e('a'), e('b', '2026-01-12')], 'a')).toBe('2026-01-12')
     expect(biweekAnchorFor([e('a', '2026-01-05', true)], 'a')).toBeUndefined()
     expect(biweekAnchorFor([])).toBeUndefined()
+    // The default from Settings wins for the general view.
+    expect(biweekAnchorFor([e('a', '2026-01-05')], 'a', '2026-11-05')).toBe('2026-11-05')
   })
 
   it('moves and labels periods', () => {

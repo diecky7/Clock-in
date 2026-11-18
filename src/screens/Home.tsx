@@ -74,9 +74,9 @@ function RowButton({ row, onOpen }: { row: Row; onOpen: () => void }) {
 }
 
 /** Two-week pay periods: the chosen employer's own, or for all employers the usual pick. */
-function anchorFor(employers: Employer[], who: string, lastEmployerId?: string): string | undefined {
-  if (who === ALL_EMPLOYERS || isSideJob(who)) return biweekAnchorFor(employers, lastEmployerId)
-  return employers.find((e) => e.id === who)?.biweeklyStart || undefined
+function anchorFor(employers: Employer[], who: string, lastEmployerId?: string, defaultStart?: string): string | undefined {
+  if (who === ALL_EMPLOYERS || isSideJob(who)) return biweekAnchorFor(employers, lastEmployerId, defaultStart)
+  return employers.find((e) => e.id === who)?.biweeklyStart || defaultStart || undefined
 }
 
 export default function Home({ initialDate }: { initialDate?: string }) {
@@ -85,6 +85,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
   const [weekStartsOn, setWeekStartsOn] = useState(0)
   const [who, setWho] = useState<string>(ALL_EMPLOYERS)
   const [lastEmployerId, setLastEmployerId] = useState<string | undefined>(undefined)
+  const [defaultStart, setDefaultStart] = useState<string | undefined>(undefined)
   const [employers, setEmployers] = useState<Employer[]>([])
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -104,14 +105,15 @@ export default function Home({ initialDate }: { initialDate?: string }) {
       setEmployers(emps)
       setWho(w)
       setLastEmployerId(s.lastEmployerId)
-      setFrom(periodStart(k, initialDate ?? today(), s.weekStartsOn, anchorFor(emps, w, s.lastEmployerId)))
+      setDefaultStart(s.biweeklyStart)
+      setFrom(periodStart(k, initialDate ?? today(), s.weekStartsOn, anchorFor(emps, w, s.lastEmployerId, s.biweeklyStart)))
     })
     return () => {
       alive = false
     }
   }, [initialDate])
 
-  const anchor = anchorFor(employers, who, lastEmployerId)
+  const anchor = anchorFor(employers, who, lastEmployerId, defaultStart)
   const to = from ? periodEnd(kind, from) : null
   const key = from ? `${kind}:${from}` : null
 
@@ -149,7 +151,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
   function changeEmployer(w: string) {
     if (w === who) return
     setWho(w)
-    if (from && kind === 'biweek') setFrom(periodStart('biweek', from, weekStartsOn, anchorFor(employers, w, lastEmployerId)))
+    if (from && kind === 'biweek') setFrom(periodStart('biweek', from, weekStartsOn, anchorFor(employers, w, lastEmployerId, defaultStart)))
     void repo.getSettings().then((s) => repo.saveSettings({ ...s, homeEmployer: w }))
   }
 

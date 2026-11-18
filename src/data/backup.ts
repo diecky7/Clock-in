@@ -89,6 +89,7 @@ const validSettings = (r: unknown): r is Settings =>
   (r.lastEmployerId === undefined || isStr(r.lastEmployerId)) &&
   (r.homePeriod === undefined || r.homePeriod === 'week' || r.homePeriod === 'biweek' || r.homePeriod === 'month') &&
   (r.homeEmployer === undefined || isStr(r.homeEmployer)) &&
+  (r.biweeklyStart === undefined || isDate(r.biweeklyStart)) &&
   (r.hiddenPlaces === undefined || (isArr(r.hiddenPlaces) && r.hiddenPlaces.every(isStr))) &&
   (r.sideJobRateCents === undefined || isCents(r.sideJobRateCents))
 const validPhoto = (r: unknown): r is PhotoJson =>

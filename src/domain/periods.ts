@@ -34,7 +34,9 @@ export function periodStart(kind: PeriodKind, date: string, weekStartsOn: number
 }
 
 /** The two-week pay period to show: the last-used employer's, else the first active employer that has one. */
-export function biweekAnchorFor(employers: Employer[], lastEmployerId?: string): string | undefined {
+export function biweekAnchorFor(employers: Employer[], lastEmployerId?: string, defaultStart?: string): string | undefined {
+  // The default set in Settings comes first; without it, an employer's own date.
+  if (defaultStart) return defaultStart
   const active = employers.filter((e) => !e.archived)
   return (active.find((e) => e.id === lastEmployerId)?.biweeklyStart ?? active.find((e) => e.biweeklyStart)?.biweeklyStart) || undefined
 }

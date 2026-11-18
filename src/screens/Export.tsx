@@ -59,7 +59,7 @@ export default function Export({
     let alive = true
     void Promise.all([repo.getSettings(), repo.listEmployers()]).then(([s, emps]) => {
       if (!alive) return
-      const anchor = biweekAnchorFor(emps, s.lastEmployerId)
+      const anchor = biweekAnchorFor(emps, s.lastEmployerId, s.biweeklyStart)
       setCfg({ weekStartsOn: s.weekStartsOn, anchor })
       setFrom(periodStart(period ?? 'week', fromParam ?? week ?? today(), s.weekStartsOn, anchor))
     })

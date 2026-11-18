@@ -7,6 +7,14 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.9.0',
+    date: '2026-11-18',
+    changes: [
+      'Settings: default start of the two-week period, with its end shown; the week shows the day it ends',
+      'An employer\'s own two-week date is now optional and overrides the default',
+    ],
+  },
+  {
     version: '1.8.0',
     date: '2026-11-13',
     changes: [
