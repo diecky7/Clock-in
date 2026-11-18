@@ -10,6 +10,7 @@ import { formatUSD } from '../domain/money'
 import { today } from '../domain/today'
 import type { Employer, Expense } from '../domain/types'
 import { navigate } from '../router'
+import { offerUndo } from '../undo'
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -101,12 +102,15 @@ export default function ExpenseForm({ id, initialDate }: { id?: string; initialD
       photoIds,
     }
     try {
+      // Taken before anything changes, so Undo can put the photos back too.
+      const before = await repo.snapshotExpense(expense.id)
       await repo.saveExpense(expense)
       await repo.rememberEmployer(employerId)
       saved.current = true
       // Photos taken out are deleted: both ones the expense already had and ones added then removed in this session.
       const dropped = new Set([...(existing?.photoIds ?? []), ...added.current])
       for (const p of dropped) if (!photoIds.includes(p)) await repo.deletePhoto(p)
+      offerUndo(before.expense ? 'Expense updated' : 'Expense added', () => repo.restoreExpense(before))
       navigate('/')
     } catch {
       setSaveError("Couldn't save. Free some space on your iPhone and try again.")

@@ -10,6 +10,7 @@ import { today } from '../domain/today'
 import { isSideJob } from '../domain/employers'
 import type { Employer } from '../domain/types'
 import { navigate } from '../router'
+import { offerUndo } from '../undo'
 
 export default function EmployerEdit({ id }: { id: string }) {
   const isNew = id === 'new'
@@ -61,13 +62,18 @@ export default function EmployerEdit({ id }: { id: string }) {
     if (employer && cents !== rateOn(employer, today())) {
       e = addRateChange(e, { from: today(), cents })
     }
+    const before = employer
     await repo.saveEmployer(e)
+    const saved = e
+    offerUndo(before ? 'Employer updated' : 'Employer added', () => (before ? repo.saveEmployer(before) : repo.deleteEmployer(saved.id)))
     navigate('/settings')
   }
 
   async function archive() {
     if (!employer) return
+    const before = employer
     await repo.saveEmployer({ ...employer, archived: true })
+    offerUndo('Employer archived', () => repo.saveEmployer(before))
     navigate('/settings')
   }
 

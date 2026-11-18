@@ -2,14 +2,25 @@ import EntryForm from './screens/EntryForm'
 import ExpenseForm from './screens/ExpenseForm'
 import Export from './screens/Export'
 import Home from './screens/Home'
+import PaymentForm from './screens/PaymentForm'
 import Places from './screens/Places'
 import EmployerEdit from './screens/EmployerEdit'
 import ScheduleEdit from './screens/ScheduleEdit'
 import Summary from './screens/Summary'
 import Settings from './screens/Settings'
 import { useRoute } from './router'
+import UndoToast from './components/UndoToast'
 
 export default function App() {
+  return (
+    <>
+      <Screens />
+      <UndoToast />
+    </>
+  )
+}
+
+function Screens() {
   const route = useRoute()
   switch (route.path) {
     case '/summary':
@@ -26,6 +37,15 @@ export default function App() {
       return <EntryForm key="new" />
     case '/entry/:id':
       return <EntryForm key={route.params.id} id={route.params.id} />
+    case '/payment/new':
+      return (
+        <PaymentForm
+          key={`${route.params.period ?? ''}${route.params.from ?? ''}${route.params.employer ?? ''}`}
+          period={(['week', 'biweek', 'month'] as const).find((k) => k === route.params.period)}
+          from={route.params.from}
+          employer={route.params.employer}
+        />
+      )
     case '/expense/new':
       return <ExpenseForm key="new" />
     case '/expense/:id':

@@ -74,6 +74,25 @@ describe('backup', () => {
     expect((await snapshot()).photos[0].bytes).toEqual(BYTES)
   })
 
+  it('keeps payments and accounts, and restores older backups that have none', async () => {
+    await seed()
+    const db = await getDb()
+    const pay = { id: 'pay1', date: '2026-10-09', entryIds: ['t1'], expenseIds: ['x1'], expectedCents: 21234, receivedCents: 21000,
+      method: 'zelle' as const, accountId: 'a1', keepShortfall: true, createdAt: 5 }
+    await db.put('payments', pay)
+    await db.put('settings', { ...settings, accounts: [{ id: 'a1', name: 'Santander' }] }, SETTINGS_KEY)
+    const file = await exportBackup()
+    await resetDbForTests()
+    await importBackup(file)
+    expect(await (await getDb()).getAll('payments')).toEqual([pay])
+    expect((await (await getDb()).get('settings', SETTINGS_KEY))?.accounts).toEqual([{ id: 'a1', name: 'Santander' }])
+
+    const old = JSON.parse(await file.text())
+    delete old.payments
+    await importBackup(new Blob([JSON.stringify(old)]))
+    expect(await (await getDb()).getAll('payments')).toEqual([])
+  })
+
   it('replaces existing data', async () => {
     await seed()
     await importBackup(blob(validDoc()))

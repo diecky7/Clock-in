@@ -1,6 +1,6 @@
 import { getDb, SETTINGS_KEY, STORES, type PhotoRecord } from './db'
 import { SIDE_JOB_ID } from '../domain/employers'
-import type { Employer, Expense, Settings, TimeEntry } from '../domain/types'
+import type { Employer, Expense, Payment, Settings, TimeEntry } from '../domain/types'
 
 export class BackupError extends Error {
   constructor(message: string) {
@@ -34,12 +34,13 @@ function base64ToBytes(b64: string): Uint8Array {
 export async function exportBackup(): Promise<Blob> {
   const db = await getDb()
   const tx = db.transaction([...STORES], 'readonly')
-  const [employers, entries, expenses, photoRecords, settings] = await Promise.all([
+  const [employers, entries, expenses, photoRecords, settings, payments] = await Promise.all([
     tx.objectStore('employers').getAll(),
     tx.objectStore('entries').getAll(),
     tx.objectStore('expenses').getAll(),
     tx.objectStore('photos').getAll(),
     tx.objectStore('settings').get(SETTINGS_KEY),
+    tx.objectStore('payments').getAll(),
   ])
   await tx.done
   const photos: PhotoJson[] = photoRecords.map((p) => ({
@@ -47,7 +48,7 @@ export async function exportBackup(): Promise<Blob> {
     type: p.type,
     data: `data:${p.type};base64,${bytesToBase64(new Uint8Array(p.bytes))}`,
   }))
-  const doc = { version: 1, exportedAt: new Date().toISOString(), employers, entries, expenses, settings: settings ?? null, photos }
+  const doc = { version: 1, exportedAt: new Date().toISOString(), employers, entries, expenses, payments, settings: settings ?? null, photos }
   return new Blob([JSON.stringify(doc)], { type: 'application/json' })
 }
 
@@ -91,7 +92,14 @@ const validSettings = (r: unknown): r is Settings =>
   (r.homeEmployer === undefined || isStr(r.homeEmployer)) &&
   (r.biweeklyStart === undefined || isDate(r.biweeklyStart)) &&
   (r.hiddenPlaces === undefined || (isArr(r.hiddenPlaces) && r.hiddenPlaces.every(isStr))) &&
-  (r.sideJobRateCents === undefined || isCents(r.sideJobRateCents))
+  (r.sideJobRateCents === undefined || isCents(r.sideJobRateCents)) &&
+  (r.accounts === undefined || (isArr(r.accounts) && r.accounts.every((a) => isObj(a) && isStr(a.id) && isStr(a.name))))
+const validPayment = (r: unknown): r is Payment =>
+  isObj(r) && isStr(r.id) && isDate(r.date) &&
+  isArr(r.entryIds) && r.entryIds.every(isStr) && isArr(r.expenseIds) && r.expenseIds.every(isStr) &&
+  isCents(r.expectedCents) && isCents(r.receivedCents) && (r.method === 'cash' || r.method === 'zelle') &&
+  (r.accountId === undefined || isStr(r.accountId)) && isBool(r.keepShortfall) && isNum(r.createdAt) &&
+  (r.itemCents === undefined || (isObj(r.itemCents) && Object.values(r.itemCents).every(isNum)))
 const validPhoto = (r: unknown): r is PhotoJson =>
   isObj(r) && isStr(r.id) && isStr(r.type) && isStr(r.data)
 
@@ -112,6 +120,7 @@ interface Parsed {
   expenses: Expense[]
   settings: Settings | null
   photos: PhotoRecord[]
+  payments: Payment[]
 }
 
 async function parseBackup(file: Blob): Promise<Parsed> {
@@ -129,12 +138,15 @@ async function parseBackup(file: Blob): Promise<Parsed> {
   if (!employers.every(validEmployer) || !entries.every(validEntry) || !expenses.every(validExpense) ||
       !photos.every(validPhoto)) throw new BackupError(INVALID)
   if (settings !== null && !validSettings(settings)) throw new BackupError(INVALID)
+  // Backups made before payments existed have no list.
+  const payments = doc.payments ?? []
+  if (!isArr(payments) || !payments.every(validPayment)) throw new BackupError(INVALID)
   const photoIds = new Set((photos as PhotoJson[]).map((p) => p.id))
   if (!(expenses as Expense[]).every((x) => x.photoIds.every((id) => photoIds.has(id)))) {
     throw new BackupError(`${INVALID} An expense refers to a photo that is missing from the file.`)
   }
   return {
-    employers, entries, expenses, settings: settings ?? null,
+    employers, entries, expenses, settings: settings ?? null, payments,
     photos: (photos as PhotoJson[]).map(decodePhoto),
   }
 }
@@ -152,6 +164,7 @@ export async function importBackup(file: Blob): Promise<void> {
         ...data.entries.map((r) => tx.objectStore('entries').put(r)),
         ...data.expenses.map((r) => tx.objectStore('expenses').put(r)),
         ...data.photos.map((r) => tx.objectStore('photos').put(r)),
+        ...data.payments.map((r) => tx.objectStore('payments').put(r)),
         ...(data.settings ? [tx.objectStore('settings').put(data.settings, SETTINGS_KEY)] : []),
       ])
     } catch (e) {

@@ -1,15 +1,17 @@
 import { shiftMinutes } from '../domain/time'
 import { placeKey, shortAddress } from '../location/address'
 import { SIDE_JOB } from '../domain/employers'
-import type { Employer, Expense, Place, Settings, TimeEntry } from '../domain/types'
+import type { Account, Employer, Expense, Payment, Place, Settings, TimeEntry } from '../domain/types'
 import {
   getDb,
+  type PhotoRecord,
   SETTINGS_KEY,
   STORE_EMPLOYERS,
   STORE_ENTRIES,
   STORE_EXPENSES,
   STORE_PHOTOS,
   STORE_SETTINGS,
+  STORE_PAYMENTS,
 } from './db'
 
 export const DEFAULT_DAY = { in: '07:00', out: '15:30', breakMin: 30 }
@@ -253,4 +255,83 @@ export async function repairZips(): Promise<number> {
     }
   }
   return changed
+}
+
+// ---- Payments ----------------------------------------------------------------------------------
+
+export async function listPayments(): Promise<Payment[]> {
+  return (await getDb()).getAll(STORE_PAYMENTS)
+}
+export async function getPayment(id: string): Promise<Payment | undefined> {
+  return (await getDb()).get(STORE_PAYMENTS, id)
+}
+export async function savePayment(p: Payment): Promise<void> {
+  await (await getDb()).put(STORE_PAYMENTS, p)
+}
+export async function deletePayment(id: string): Promise<void> {
+  await (await getDb()).delete(STORE_PAYMENTS, id)
+}
+
+/** Adds a bank account by name; an existing one with the same name (any case) is returned instead. */
+export async function createAccount(name: string): Promise<{ account: Account; created: boolean }> {
+  // Find-or-create in one transaction, so two quick taps can't make two accounts or lose one.
+  const db = await getDb()
+  const tx = db.transaction(STORE_SETTINGS, 'readwrite')
+  const s = (await tx.store.get(SETTINGS_KEY)) ?? defaultSettings()
+  const clean = name.trim().replace(/\s+/g, ' ')
+  const found = (s.accounts ?? []).find((a) => a.name.toLowerCase() === clean.toLowerCase())
+  if (found) {
+    await tx.done
+    return { account: found, created: false }
+  }
+  const account = { id: crypto.randomUUID(), name: clean }
+  await tx.store.put({ ...s, accounts: [...(s.accounts ?? []), account] }, SETTINGS_KEY)
+  await tx.done
+  return { account, created: true }
+}
+export async function deleteAccount(id: string): Promise<void> {
+  const s = await getSettings()
+  await saveSettings({ ...s, accounts: (s.accounts ?? []).filter((a) => a.id !== id) })
+}
+
+// ---- Undo helpers ------------------------------------------------------------------------------
+
+export interface ExpenseSnapshot {
+  id: string
+  expense: Expense | undefined
+  photos: PhotoRecord[]
+}
+
+/** The expense as it is now, with its photo bytes, so it can be put back exactly. */
+export async function snapshotExpense(id: string): Promise<ExpenseSnapshot> {
+  const db = await getDb()
+  const expense = await db.get(STORE_EXPENSES, id)
+  const photos = expense ? (await Promise.all(expense.photoIds.map((p) => db.get(STORE_PHOTOS, p)))).filter((p) => p !== undefined) : []
+  return { id, expense, photos }
+}
+
+/** Puts an expense back as it was in the snapshot (or removes it if it didn't exist), photos included. */
+export async function restoreExpense(snap: ExpenseSnapshot): Promise<void> {
+  const db = await getDb()
+  const tx = db.transaction([STORE_EXPENSES, STORE_PHOTOS], 'readwrite')
+  const now = await tx.objectStore(STORE_EXPENSES).get(snap.id)
+  const keep = new Set(snap.photos.map((p) => p.id))
+  for (const p of now?.photoIds ?? []) if (!keep.has(p)) await tx.objectStore(STORE_PHOTOS).delete(p)
+  for (const p of snap.photos) await tx.objectStore(STORE_PHOTOS).put(p)
+  if (snap.expense) await tx.objectStore(STORE_EXPENSES).put(snap.expense)
+  else await tx.objectStore(STORE_EXPENSES).delete(snap.id)
+  await tx.done
+}
+
+export async function getEmployer(id: string): Promise<Employer | undefined> {
+  return (await getDb()).get(STORE_EMPLOYERS, id)
+}
+export async function deleteEmployer(id: string): Promise<void> {
+  await (await getDb()).delete(STORE_EMPLOYERS, id)
+}
+
+/** Puts the address book back as it was (after an address was deleted). */
+export async function restorePlaces(prev: Pick<Settings, 'recentPlaces' | 'hiddenPlaces'>): Promise<void> {
+  const s = await getSettings()
+  await saveSettings({ ...s, recentPlaces: prev.recentPlaces, hiddenPlaces: prev.hiddenPlaces })
 }

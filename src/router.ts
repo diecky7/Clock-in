@@ -11,6 +11,7 @@ const PATTERNS = [
   '/entry/:id',
   '/expense/new',
   '/expense/:id',
+  '/payment/new',
   '/settings',
   '/settings/employer/:id',
   '/settings/schedule',

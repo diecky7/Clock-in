@@ -4,6 +4,7 @@ import { useRef, type PointerEvent } from 'react'
 /** Pointer handlers that fire `onLongPress` after the finger rests for `ms`. */
 export function useLongPress(onLongPress: () => void, ms = 500) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fired = useRef(false)
   const cancel = () => {
     if (timer.current) clearTimeout(timer.current)
     timer.current = null
@@ -11,10 +12,18 @@ export function useLongPress(onLongPress: () => void, ms = 500) {
   return {
     onPointerDown: () => {
       cancel()
+      fired.current = false
       timer.current = setTimeout(() => {
         timer.current = null
+        fired.current = true
         onLongPress()
       }, ms)
+    },
+    /** True once for the click that ends a hold, so it isn't also taken as a tap. */
+    consumeHold: () => {
+      const f = fired.current
+      fired.current = false
+      return f
     },
     onPointerUp: cancel,
     onPointerLeave: cancel,
@@ -38,9 +47,11 @@ export function LongPressMenu({
   onAskDelete,
   onConfirmDelete,
   onClose,
+  onViewPayment,
 }: {
   target: MenuTarget
   confirming: boolean
+  onViewPayment?: () => void
   onEdit: () => void
   onAskDelete: () => void
   onConfirmDelete: () => void
@@ -59,6 +70,11 @@ export function LongPressMenu({
           </>
         ) : (
           <>
+            {onViewPayment && (
+              <button type="button" className={`${btn} bg-surface`} onClick={onViewPayment}>
+                View payment
+              </button>
+            )}
             <button type="button" className={`${btn} bg-surface`} onClick={onEdit}>
               Edit
             </button>

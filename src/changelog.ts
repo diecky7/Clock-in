@@ -7,6 +7,17 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.10.0',
+    date: '2026-11-18',
+    changes: [
+      'Receive payment (on the + button): tick what was paid in the period, enter the amount received, and choose Cash or Zelle with the account',
+      'The difference is shown; when you got less, you can keep the rest as still to receive',
+      'Home shows what is still to receive under the total, and a ✓ on received rows; tap one to see or undo its payment',
+      'Every change can be undone for 3.5 seconds from the Undo button at the bottom',
+      'Bank accounts are listed in Settings',
+    ],
+  },
+  {
     version: '1.9.0',
     date: '2026-11-18',
     changes: [
