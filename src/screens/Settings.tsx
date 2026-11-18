@@ -1,4 +1,7 @@
 import Modal from '../components/Modal'
+import DateTimeField from '../components/DateTimeField'
+import { formatDay } from '../domain/time'
+import { addDays } from '../domain/weeks'
 import VersionFooter from '../components/VersionFooter'
 import { CHANGELOG } from '../changelog'
 import PersistenceNote from '../components/PersistenceNote'
@@ -124,7 +127,10 @@ export default function Settings() {
             </button>
           </div>
           <div className={`${rowCls} ${divider} py-2`}>
-            <label htmlFor="week-start">Week starts on</label>
+            <div>
+              <label htmlFor="week-start">Week starts on</label>
+              <p className="text-sm text-muted">Ends on {DAYS[(settings.weekStartsOn + 6) % 7]}</p>
+            </div>
             <select
               id="week-start"
               className={`${inputCls} !w-auto`}
@@ -137,6 +143,27 @@ export default function Settings() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className={`${divider} px-4 pb-3`}>
+            <DateTimeField
+              type="date"
+              label="Biweekly period starts on"
+              value={settings.biweeklyStart ?? ''}
+              onChange={(v) => void patch({ biweeklyStart: v || undefined })}
+              className="mt-3"
+            />
+            <div className="mt-1 flex min-h-11 items-center justify-between gap-3">
+              <p className="text-sm text-muted">
+                {settings.biweeklyStart
+                  ? `Ends on ${formatDay(addDays(settings.biweeklyStart, 13))} · repeats every 14 days`
+                  : 'Not set: two weeks count from Jan 2026'}
+              </p>
+              {settings.biweeklyStart && (
+                <button type="button" className="min-h-11 shrink-0 px-2 text-sm text-muted" onClick={() => void patch({ biweeklyStart: undefined })}>
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
           <div className={`${rowCls} ${divider} py-2`}>
             <label htmlFor="nearby">Ask about saved address within</label>
