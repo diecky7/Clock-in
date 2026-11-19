@@ -9,7 +9,8 @@ function dayLabel(date: string): string {
   return `${SHORT_DAYS[new Date(y, m - 1, d).getDay()]} ${d}`
 }
 
-export type ListedItem = { kind: 'entry'; item: TimeEntry; cents?: number } | { kind: 'expense'; item: Expense; cents?: number }
+/** `cents` is the amount shown; `of` the full value when that is only part of it. */
+export type ListedItem = ({ kind: 'entry'; item: TimeEntry } | { kind: 'expense'; item: Expense }) & { cents?: number; of?: number }
 
 /** Compact rows like the home screen's: day, what it was, and its value. Newest first. */
 export default function ItemRows({ items, label }: { items: ListedItem[]; label: string }) {
@@ -35,7 +36,12 @@ export default function ItemRows({ items, label }: { items: ListedItem[]; label:
               <span className="truncate">{i.item.description}</span>
             </span>
           )}
-          {i.cents !== undefined && <span className="shrink-0 tabular-nums">{formatUSD(Math.round(i.cents))}</span>}
+          {i.cents !== undefined && (
+            <span className="shrink-0 text-right tabular-nums">
+              {formatUSD(Math.round(i.cents))}
+              {i.of !== undefined && <span className="block text-sm text-muted">of {formatUSD(Math.round(i.of))}</span>}
+            </span>
+          )}
         </li>
       ))}
     </ul>

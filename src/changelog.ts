@@ -7,6 +7,16 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.12.0',
+    date: '2026-11-18',
+    changes: [
+      'Receive payment: choose Full or Partial',
+      'Full fills in the expected amount; a different amount needs a tick ("Accept $5.00 less") and then everything is settled',
+      'Partial pays the oldest entries first and the rest stays to receive; part-paid entries come back next time with what is left',
+      'Home: ✓ received, half circle for part-received; a row paid in two goes shows both payments',
+    ],
+  },
+  {
     version: '1.11.0',
     date: '2026-11-18',
     changes: [

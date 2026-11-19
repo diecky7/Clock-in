@@ -59,7 +59,8 @@ export default function MarkReceivedDialog({ onClose }: { onClose: () => void })
         receivedCents: cents,
         method: 'marked' as const,
         keepShortfall: false,
-        itemCents: u.itemCents,
+        kind: 'full' as const,
+        allocations: u.itemCents,
         createdAt: Date.now(),
       }
       await repo.savePayment(payment)
