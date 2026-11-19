@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { itemValues, toReceiveCents } from './payments'
+import { allocateOldestFirst, itemStates, itemValues, toReceiveCents } from './payments'
 import type { Employer, Expense, Payment, TimeEntry } from './types'
 
 const emp = { id: 'e', name: 'A', overtimeEnabled: true, archived: false, rates: [] } as Employer
@@ -22,22 +22,50 @@ describe('payments', () => {
     expect(values.get('x')).toBe(1500)
   })
 
-  it('an item edited after it was paid owes what it grew by', () => {
-    const p = pay({ entryIds: ['2026-09-28'], expectedCents: 20000, receivedCents: 20000, itemCents: { '2026-09-28': 20000 } })
-    const grown = new Map(values).set('2026-09-28', 26000)
-    expect(toReceiveCents(['2026-09-28'], grown, [p])).toBe(6000)
-    expect(toReceiveCents(['2026-09-28'], new Map(values).set('2026-09-28', 15000), [p])).toBe(0)
+  it('a full payment settles its items, even when less was accepted', () => {
+    const ids = ['2026-09-28', '2026-09-29']
+    const p = pay({ kind: 'full', entryIds: ids, expectedCents: 40000, receivedCents: 39000, allocations: { '2026-09-28': 20000, '2026-09-29': 20000 } })
+    const st = itemStates(values, [p])
+    expect(st.get('2026-09-28')?.status).toBe('paid')
+    expect(toReceiveCents(all, st)).toBe(111500 - 40000)
   })
 
-  it('owes everything unpaid, nothing once paid, and a kept shortfall', () => {
-    expect(toReceiveCents(all, values, [])).toBe(111500)
-    const full = pay({ entryIds: entries.map((e) => e.id), expenseIds: ['x'], expectedCents: 111500, receivedCents: 111500 })
-    expect(toReceiveCents(all, values, [full])).toBe(0)
-    const short = { ...full, receivedCents: 101500 }
-    expect(toReceiveCents(all, values, [short])).toBe(0) // shortfall not kept
-    expect(toReceiveCents(all, values, [{ ...short, keepShortfall: true }])).toBe(10000)
-    // Only October's part of the payment is in view: its share of the shortfall.
-    const oct = ['2026-10-01', '2026-10-02', 'x']
-    expect(toReceiveCents(oct, values, [{ ...short, keepShortfall: true }])).toBe(Math.round((10000 * 51500) / 111500))
+  it('a partial payment fills the oldest first and leaves the rest owed', () => {
+    const owed = all.slice(0, 3).map((id) => ({ id, owed: values.get(id)! }))
+    const alloc = allocateOldestFirst(owed, 30000)
+    expect(alloc).toEqual({ '2026-09-28': 20000, '2026-09-29': 10000 })
+    const st = itemStates(values, [pay({ kind: 'partial', entryIds: Object.keys(alloc), expectedCents: 60000, receivedCents: 30000, allocations: alloc })])
+    expect(st.get('2026-09-28')?.status).toBe('paid')
+    expect(st.get('2026-09-29')).toMatchObject({ status: 'partial', received: 10000, remaining: 10000 })
+    expect(st.get('2026-09-30')?.status).toBe('open')
+    expect(toReceiveCents(all, st)).toBe(111500 - 30000)
+  })
+
+  it('partial money in whole cents never spills a fraction onto the next item', () => {
+    const owed = [{ id: 'a', owed: 18041.67 }, { id: 'b', owed: 18041.67 }, { id: 'c', owed: 18041.67 }]
+    expect(allocateOldestFirst(owed, 18042)).toEqual({ a: 18041.67 })
+    expect(allocateOldestFirst(owed, 36084)).toEqual({ a: 18041.67, b: 18041.67 })
+    expect(allocateOldestFirst(owed, 20000)).toEqual({ a: 18041.67, b: 1958 })
+  })
+
+  it('two payments add up on the same item', () => {
+    const p1 = pay({ id: 'a', kind: 'partial', entryIds: ['2026-09-28'], allocations: { '2026-09-28': 5000 }, createdAt: 1 })
+    const p2 = pay({ id: 'b', kind: 'full', entryIds: ['2026-09-28'], allocations: { '2026-09-28': 15000 }, createdAt: 2 })
+    const st = itemStates(values, [p1, p2]).get('2026-09-28')!
+    expect(st.status).toBe('paid')
+    expect(st.payments.map((p) => p.id)).toEqual(['b', 'a'])
+  })
+
+  it('an item edited after it was paid owes what it grew by', () => {
+    const p = pay({ entryIds: ['2026-09-28'], expectedCents: 20000, receivedCents: 20000, allocations: { '2026-09-28': 20000 } })
+    const grown = new Map(values).set('2026-09-28', 26000)
+    expect(itemStates(grown, [p]).get('2026-09-28')).toMatchObject({ status: 'partial', remaining: 6000 })
+  })
+
+  it('reads older payments: full at their value then, or kept shortfall shared in proportion', () => {
+    const old = pay({ entryIds: ['2026-09-28'], expenseIds: ['x'], expectedCents: 21500, receivedCents: 20000, itemCents: { '2026-09-28': 20000, x: 1500 } })
+    expect(toReceiveCents(['2026-09-28', 'x'], itemStates(values, [old]))).toBe(0)
+    const kept = { ...old, keepShortfall: true }
+    expect(toReceiveCents(['2026-09-28', 'x'], itemStates(values, [kept]))).toBe(1500)
   })
 })

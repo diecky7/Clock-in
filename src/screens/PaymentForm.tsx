@@ -7,7 +7,7 @@ import { PrimaryButton, Screen } from '../components/ui'
 import * as repo from '../data/repo'
 import { ALL_EMPLOYERS } from '../domain/employers'
 import { formatUSD } from '../domain/money'
-import { itemValues, paidBy } from '../domain/payments'
+import { allocateOldestFirst, itemStates, itemValues } from '../domain/payments'
 import { anchorFor, PERIOD_WORDS, periodEnd, periodLabel, periodStart, type PeriodKind } from '../domain/periods'
 import { formatClock, formatDuration, shiftMinutes } from '../domain/time'
 import { today } from '../domain/today'
@@ -29,7 +29,10 @@ interface Item {
   employerId: string
   text: string
   sub?: string
+  /** Still owed (exact cents). */
   cents: number
+  /** Full value, when part of it was already received. */
+  of?: number
 }
 
 /** Mark the period's entries and expenses as received, with what really came in and how. */
@@ -42,12 +45,16 @@ export default function PaymentForm({ period, from: fromParam, employer: only }:
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [date, setDate] = useState(today())
   const [received, setReceived] = useState<number | null>(null)
-  const [keepShortfall, setKeepShortfall] = useState(false)
+  const [mode, setMode] = useState<'full' | 'partial'>('full')
+  // Full: the amount follows what's expected until it is typed over.
+  const [amountTyped, setAmountTyped] = useState(false)
+  // Bypass for Full when the amount differs from what's expected (less, or by mistake more).
+  const [acceptDiff, setAcceptDiff] = useState(false)
   const [method, setMethod] = useState<'cash' | 'zelle' | null>(null)
   const [accountText, setAccountText] = useState('')
   const [accountId, setAccountId] = useState('')
   const [asking, setAsking] = useState<string | null>(null)
-  const [errors, setErrors] = useState<{ items?: string; amount?: string; method?: string; account?: string }>({})
+  const [errors, setErrors] = useState<{ items?: string; amount?: string; accept?: string; method?: string; account?: string }>({})
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
@@ -63,11 +70,14 @@ export default function PaymentForm({ period, from: fromParam, employer: only }:
         repo.listExpensesBetween(start, end),
       ])
       const values = itemValues(entries, expenses, emps, s.weekStartsOn)
-      const paid = paidBy(payments)
+      const states = itemStates(values, payments)
+      // Open and partly received items are offered, with what is still owed on them.
+      const owed = (id: string) => states.get(id)?.remaining ?? values.get(id) ?? 0
+      const partOf = (id: string) => (states.get(id)?.status === 'partial' ? { of: values.get(id) } : {})
       const mine = (id: string) => !only || only === ALL_EMPLOYERS || id === only
       const list: Item[] = [
         ...entries
-          .filter((e) => e.start.slice(0, 10) >= start && e.start.slice(0, 10) <= end && mine(e.employerId) && !paid.has(e.id))
+          .filter((e) => e.start.slice(0, 10) >= start && e.start.slice(0, 10) <= end && mine(e.employerId) && owed(e.id) > 0)
           .map((e) => ({
             kind: 'entry' as const,
             id: e.id,
@@ -75,11 +85,12 @@ export default function PaymentForm({ period, from: fromParam, employer: only }:
             employerId: e.employerId,
             text: `${formatClock(e.start.slice(11, 16))} – ${formatClock(e.end.slice(11, 16))}`,
             sub: `${formatDuration(shiftMinutes(e))}${e.service ? ` · ${e.service}` : ''}`,
-            cents: values.get(e.id) ?? 0,
+            cents: owed(e.id),
+            ...partOf(e.id),
           })),
         ...expenses
-          .filter((x) => mine(x.employerId) && !paid.has(x.id))
-          .map((x) => ({ kind: 'expense' as const, id: x.id, date: x.date, employerId: x.employerId, text: x.description, cents: x.amountCents })),
+          .filter((x) => mine(x.employerId) && owed(x.id) > 0)
+          .map((x) => ({ kind: 'expense' as const, id: x.id, date: x.date, employerId: x.employerId, text: x.description, cents: owed(x.id), ...partOf(x.id) })),
       ].sort((a, b) => a.date.localeCompare(b.date) || (a.kind === b.kind ? 0 : a.kind === 'entry' ? -1 : 1))
       if (!alive) return
       setFrom(start)
@@ -95,7 +106,13 @@ export default function PaymentForm({ period, from: fromParam, employer: only }:
   }, [kind, fromParam, only])
 
   const expected = useMemo(() => Math.round((items ?? []).filter((i) => picked.has(i.id)).reduce((s, i) => s + i.cents, 0)), [items, picked])
-  const diff = received === null ? null : received - expected
+  // In Full the amount is the expected one until typed over.
+  const amount = mode === 'full' && !amountTyped ? expected : received
+  const diff = amount === null ? null : amount - expected
+  const short = diff !== null && diff < 0 ? -diff : 0
+  const left = mode === 'partial' && amount !== null && amount < expected ? expected - amount : 0
+  // The bypass is for one exact difference: any change to it asks again.
+  useEffect(() => setAcceptDiff(false), [diff])
   const names = new Map(employers.map((e) => [e.id, e.name]))
   const groups = useMemo(() => {
     const m = new Map<string, Item[]>()
@@ -160,31 +177,41 @@ export default function PaymentForm({ period, from: fromParam, employer: only }:
     const acc = stored.some((a) => a.id === want) ? want : ''
     const next: typeof errors = {}
     if (picked.size === 0) next.items = 'Choose what was paid'
-    if (received === null) next.amount = 'Enter the amount received'
+    if (amount === null || amount === 0) next.amount = 'Enter the amount received'
+    else if (mode === 'partial' && amount >= expected) next.amount = 'That covers it all: choose Full'
+    else if (mode === 'full' && short > 0 && !acceptDiff) next.accept = `Tick “Accept ${formatUSD(short)} less”, or choose Partial`
+    else if (mode === 'full' && diff !== null && diff > 0 && !acceptDiff) next.accept = `Tick “Accept ${formatUSD(diff)} more” if that's right`
     if (!method) next.method = 'Choose how you were paid'
     if (method === 'zelle' && !acc) {
       if (accountText.trim()) {
         // A name that isn't an account yet: ask before creating it.
         setErrors(next)
-        if (!next.items && !next.amount) setAsking(accountText.trim())
+        if (!next.items && !next.amount && !next.accept) setAsking(accountText.trim())
         return
       }
       next.account = 'Choose the account'
     }
     setErrors(next)
-    if (Object.values(next).some(Boolean) || received === null || !method || saving) return
+    if (Object.values(next).some(Boolean) || amount === null || !method || saving) return
     const chosen = (items ?? []).filter((i) => picked.has(i.id))
+    // Full settles every chosen item; partial pays the oldest first until the money runs out.
+    const allocations =
+      mode === 'full'
+        ? Object.fromEntries(chosen.map((i) => [i.id, i.cents]))
+        : allocateOldestFirst(chosen.map((i) => ({ id: i.id, owed: i.cents })), amount)
+    const touched = chosen.filter((i) => allocations[i.id] !== undefined)
     const payment: Payment = {
       id: crypto.randomUUID(),
       date,
-      entryIds: chosen.filter((i) => i.kind === 'entry').map((i) => i.id),
-      expenseIds: chosen.filter((i) => i.kind === 'expense').map((i) => i.id),
+      entryIds: touched.filter((i) => i.kind === 'entry').map((i) => i.id),
+      expenseIds: touched.filter((i) => i.kind === 'expense').map((i) => i.id),
       expectedCents: expected,
-      receivedCents: received,
+      receivedCents: amount,
       method,
       ...(method === 'zelle' ? { accountId: acc } : {}),
-      keepShortfall: received < expected && keepShortfall,
-      itemCents: Object.fromEntries(chosen.map((i) => [i.id, i.cents])),
+      keepShortfall: false,
+      kind: mode,
+      allocations,
       createdAt: Date.now(),
     }
     setSaving(true)
@@ -231,7 +258,10 @@ export default function PaymentForm({ period, from: fromParam, employer: only }:
                         <span className="block truncate">{i.text}</span>
                         {i.sub && <span className="block truncate text-sm text-muted">{i.sub}</span>}
                       </span>
-                      <span className="shrink-0 tabular-nums">{formatUSD(Math.round(i.cents))}</span>
+                      <span className="shrink-0 text-right tabular-nums">
+                        {formatUSD(Math.round(i.cents))}
+                        {i.of !== undefined && <span className="block text-sm text-muted">of {formatUSD(Math.round(i.of))}</span>}
+                      </span>
                     </label>
                   </li>
                 ))}
@@ -248,31 +278,79 @@ export default function PaymentForm({ period, from: fromParam, employer: only }:
             <span className="font-semibold tabular-nums">{formatUSD(expected)}</span>
           </p>
 
+          <div role="group" aria-label="Paid" className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-surface p-1">
+            <button
+              type="button"
+              aria-pressed={mode === 'full'}
+              className={segBtn(mode === 'full')}
+              onClick={() => {
+                setMode('full')
+                setErrors((e) => ({ ...e, amount: undefined, accept: undefined }))
+                // Nothing typed: back to the expected amount.
+                if (received === null) setAmountTyped(false)
+              }}
+            >
+              Full
+            </button>
+            <button
+              type="button"
+              aria-pressed={mode === 'partial'}
+              className={segBtn(mode === 'partial')}
+              onClick={() => {
+                setMode('partial')
+                setErrors((e) => ({ ...e, amount: undefined, accept: undefined }))
+                // Partial starts empty: the amount is what really came in.
+                if (!amountTyped) setReceived(null)
+                setAmountTyped(true)
+              }}
+            >
+              Partial
+            </button>
+          </div>
+
           <div className="mt-4">
             <label htmlFor="received" className="mb-1 block text-sm text-muted">
               Amount received
             </label>
-            <MoneyInput id="received" cents={received} onChange={setReceived} />
+            <MoneyInput
+              id="received"
+              cents={amount}
+              onChange={(c) => {
+                setAmountTyped(true)
+                setReceived(c)
+                setErrors((e) => ({ ...e, amount: undefined, accept: undefined }))
+              }}
+            />
             {errors.amount && (
               <p role="alert" className="mt-1 text-sm text-danger">
                 {errors.amount}
               </p>
             )}
           </div>
-          {diff !== null && diff !== 0 && (
-            <p className={`mt-2 flex justify-between px-1 text-base ${diff < 0 ? 'text-danger' : ''}`}>
-              <span>Difference</span>
-              <span className="tabular-nums">
-                {diff < 0 ? '−' : '+'}
-                {formatUSD(Math.abs(diff))}
-              </span>
+          {mode === 'full' && diff !== null && diff !== 0 && (
+            <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-3 px-1 text-base">
+              <input
+                type="checkbox"
+                className="size-5 shrink-0"
+                checked={acceptDiff}
+                onChange={(e) => {
+                  setAcceptDiff(e.target.checked)
+                  setErrors((er) => ({ ...er, accept: undefined }))
+                }}
+              />
+              Accept {formatUSD(Math.abs(diff))} {diff < 0 ? 'less' : 'more'}
+            </label>
+          )}
+          {errors.accept && (
+            <p role="alert" className="mt-1 text-sm text-danger">
+              {errors.accept}
             </p>
           )}
-          {diff !== null && diff < 0 && (
-            <label className="mt-1 flex min-h-11 cursor-pointer items-center gap-3 px-1 text-base">
-              <input type="checkbox" className="size-5 shrink-0" checked={keepShortfall} onChange={(e) => setKeepShortfall(e.target.checked)} />
-              Keep {formatUSD(-diff)} as still to receive
-            </label>
+          {mode === 'partial' && left > 0 && (
+            <p className="mt-2 flex justify-between px-1 text-base">
+              <span className="text-muted">Left to receive · oldest paid first</span>
+              <span className="font-semibold tabular-nums">{formatUSD(left)}</span>
+            </p>
           )}
 
           <DateTimeField type="date" label="Received on" value={date} onChange={(v) => v && setDate(v)} />
@@ -314,7 +392,7 @@ export default function PaymentForm({ period, from: fromParam, employer: only }:
             </p>
           )}
           <PrimaryButton className="mt-6 w-full" disabled={saving} onClick={() => void save()}>
-            Save · {received === null ? formatUSD(expected) : formatUSD(received)}
+            Save · {formatUSD(amount ?? 0)}
           </PrimaryButton>
         </>
       )}

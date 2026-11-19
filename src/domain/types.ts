@@ -85,8 +85,12 @@ export interface Payment {
   method: 'cash' | 'zelle' | 'marked'
   /** Zelle only: the account it went to. */
   accountId?: string
-  /** Received less than expected and the rest is still owed. */
+  /** Older payments only: received less and the rest was kept as owed (now: kind 'partial'). */
   keepShortfall: boolean
+  /** 'full' settles every chosen item (a lower amount only with "Accept less"); 'partial' leaves the rest owed. */
+  kind?: 'full' | 'partial'
+  /** Exact cents applied to each item. Full: what each was still owed; partial: the oldest first until the money runs out. */
+  allocations?: Record<string, number>
   /** What each item was worth when paid (exact cents); an item that later grows owes the difference. */
   itemCents?: Record<string, number>
   createdAt: number

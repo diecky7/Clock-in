@@ -16,36 +16,79 @@ export function itemValues(entries: TimeEntry[], expenses: Expense[], employers:
   return out
 }
 
-/** The payment each entry or expense belongs to. */
-export function paidBy(payments: Payment[]): Map<string, Payment> {
-  const out = new Map<string, Payment>()
-  for (const p of payments) for (const id of [...p.entryIds, ...p.expenseIds]) out.set(id, p)
+/** Under half a cent left counts as nothing: values are exact and may carry fractions. */
+const EPS = 0.5
+
+/**
+ * Exact cents a payment applied to each of its items. Payments made before allocations were stored are read as:
+ * fully settling each item at its value then; or, when the rest was kept as owed, the received amount shared out
+ * in proportion.
+ */
+export function allocationsOf(p: Payment, values: Map<string, number>): Record<string, number> {
+  if (p.allocations) return p.allocations
+  const ids = [...p.entryIds, ...p.expenseIds]
+  const worth = (id: string) => p.itemCents?.[id] ?? values.get(id) ?? 0
+  const short = p.keepShortfall && p.receivedCents < p.expectedCents && p.expectedCents > 0
+  const share = short ? p.receivedCents / p.expectedCents : 1
+  return Object.fromEntries(ids.map((id) => [id, worth(id) * share]))
+}
+
+export interface ItemState {
+  /** Exact cents received for it so far. */
+  received: number
+  /** Exact cents still owed (never below zero). */
+  remaining: number
+  status: 'open' | 'partial' | 'paid'
+  /** Payments that touched it, newest first. */
+  payments: Payment[]
+}
+
+/** Where each item stands: open, partly received or received. Items with no payment are simply open. */
+export function itemStates(values: Map<string, number>, payments: Payment[]): Map<string, ItemState> {
+  const out = new Map<string, ItemState>()
+  for (const [id, v] of values) out.set(id, { received: 0, remaining: v, status: v > EPS ? 'open' : 'paid', payments: [] })
+  const newest = [...payments].sort((a, b) => b.createdAt - a.createdAt)
+  for (const p of newest)
+    for (const [id, cents] of Object.entries(allocationsOf(p, values))) {
+      const st = out.get(id)
+      if (!st) continue // outside the loaded period, or deleted
+      st.received += cents
+      st.payments.push(p)
+    }
+  for (const [id, st] of out) {
+    const v = values.get(id) ?? 0
+    st.remaining = Math.max(0, v - st.received)
+    // Nothing owed but never paid (worth $0): no mark at all.
+    st.status = st.remaining <= EPS ? (st.payments.length ? 'paid' : 'open') : st.received > EPS ? 'partial' : 'open'
+    if (st.remaining <= EPS) st.remaining = 0
+  }
   return out
 }
 
+/** Still owed for the given items, in whole cents. */
+export function toReceiveCents(itemIds: string[], states: Map<string, ItemState>): number {
+  return Math.round(itemIds.reduce((s, id) => s + (states.get(id)?.remaining ?? 0), 0))
+}
+
 /**
- * Still owed for the given items: everything not paid yet, plus the part of a short payment that was kept as owed
- * (shared out by how much of that payment's items are in this list), plus what a paid item grew by if edited later.
+ * Splits money over items, oldest first: each gets what it still owes until the money runs out.
+ * `items` must already be in date order.
  */
-export function toReceiveCents(itemIds: string[], values: Map<string, number>, payments: Payment[]): number {
-  const by = paidBy(payments)
-  let owed = 0
-  const inList = new Map<Payment, number>()
-  for (const id of itemIds) {
-    const v = values.get(id) ?? 0
-    const p = by.get(id)
-    if (!p) {
-      owed += v
-      continue
+export function allocateOldestFirst(items: { id: string; owed: number }[], cents: number): Record<string, number> {
+  // Money is typed in whole cents against amounts shown rounded, so compare whole cents: an item shown as $180.42
+  // is fully paid by $180.42, with no fraction of a cent spilling onto the next one.
+  const out: Record<string, number> = {}
+  let left = cents
+  for (const i of items) {
+    if (left <= EPS) break
+    const due = Math.round(i.owed)
+    if (left >= due) {
+      out[i.id] = i.owed
+      left -= due
+    } else {
+      out[i.id] = left
+      left = 0
     }
-    // Edited after it was paid: what it grew by is still owed.
-    const was = p.itemCents?.[id]
-    if (was !== undefined && v > was) owed += v - was
-    if (p.keepShortfall) inList.set(p, (inList.get(p) ?? 0) + Math.min(v, was ?? v))
   }
-  for (const [p, v] of inList) {
-    const short = p.expectedCents - p.receivedCents
-    if (short > 0 && p.expectedCents > 0) owed += (short * v) / p.expectedCents
-  }
-  return Math.max(0, Math.round(owed))
+  return out
 }

@@ -12,7 +12,7 @@ import { computeWeek } from '../domain/pay'
 import { formatClock, formatDuration, shiftMinutes } from '../domain/time'
 import { today } from '../domain/today'
 import type { Account, Employer, Expense, Payment, TimeEntry } from '../domain/types'
-import { itemValues, paidBy, toReceiveCents } from '../domain/payments'
+import { itemStates, itemValues, toReceiveCents } from '../domain/payments'
 import PaymentDialog from '../components/PaymentDialog'
 import OpenDialog from '../components/OpenDialog'
 import type { ListedItem } from '../components/ItemRows'
@@ -33,15 +33,28 @@ function dayLabel(date: string): string {
 }
 
 type Row =
-  | { kind: 'entry'; id: string; date: string; sort: string; employer: string; service?: string; hours: string; paid: boolean }
-  | { kind: 'expense'; id: string; date: string; sort: string; description: string; amount: string; paid: boolean }
+  | { kind: 'entry'; id: string; date: string; sort: string; employer: string; service?: string; hours: string; paid: PayStatus }
+  | { kind: 'expense'; id: string; date: string; sort: string; description: string; amount: string; paid: PayStatus }
 
-/** Small check on rows already received; a blank of the same width keeps the numbers lined up. */
-function Paid({ on }: { on: boolean }) {
+type PayStatus = 'open' | 'partial' | 'paid'
+
+/** ✓ received, ◐ partly received; a blank of the same width keeps the numbers lined up. */
+function Paid({ on }: { on: PayStatus }) {
   return (
-    <span className={`w-4 shrink-0 text-center text-sm ${on ? 'text-muted' : ''}`}>
-      <span aria-hidden>{on ? '✓' : ''}</span>
-      {on && <span className="sr-only">Received</span>}
+    <span className="grid w-4 shrink-0 place-items-center text-muted">
+      {on === 'paid' && (
+        <svg aria-hidden width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2.5 6.5 5 9l4.5-6" />
+        </svg>
+      )}
+      {on === 'partial' && (
+        // Half-filled circle: part of it received.
+        <svg aria-hidden width="12" height="12" viewBox="0 0 12 12">
+          <circle cx="6" cy="6" r="4.75" fill="none" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M6 1.25a4.75 4.75 0 0 0 0 9.5z" fill="currentColor" />
+        </svg>
+      )}
+      {on !== 'open' && <span className="sr-only">{on === 'paid' ? 'Received' : 'Partly received'}</span>}
     </span>
   )
 }
@@ -104,7 +117,8 @@ export default function Home({ initialDate }: { initialDate?: string }) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
-  const [viewing, setViewing] = useState<Payment | null>(null)
+  // Every payment that touched the row tapped (newest first) and which one is shown.
+  const [viewing, setViewing] = useState<{ list: Payment[]; i: number } | null>(null)
   const [showOpen, setShowOpen] = useState(false)
   const [loadedFor, setLoadedFor] = useState<string | null>(null)
   const [choosing, setChoosing] = useState(false)
@@ -214,24 +228,27 @@ export default function Home({ initialDate }: { initialDate?: string }) {
     [mine, from, to],
   )
 
-  const paid = useMemo(() => paidBy(payments), [payments])
   const values = useMemo(() => itemValues(entries, mine.expenses, employers, weekStartsOn), [entries, mine, employers, weekStartsOn])
+  const states = useMemo(() => itemStates(values, payments), [values, payments])
+  const status = (id: string): PayStatus => states.get(id)?.status ?? 'open'
   const toReceive = useMemo(
-    () => toReceiveCents([...shown.map((e) => e.id), ...mine.expenses.map((x) => x.id)], values, payments),
-    [values, shown, mine, payments],
+    () => toReceiveCents([...shown.map((e) => e.id), ...mine.expenses.map((x) => x.id)], states),
+    [states, shown, mine],
   )
-  // Open = not paid yet; "other" = still owed on items that were paid (kept shortfall, grown after payment).
-  const open = useMemo<ListedItem[]>(
-    () => [
-      ...shown.filter((e) => !paid.has(e.id)).map((e) => ({ kind: 'entry' as const, item: e, cents: values.get(e.id) })),
-      ...mine.expenses.filter((x) => !paid.has(x.id)).map((x) => ({ kind: 'expense' as const, item: x, cents: x.amountCents })),
-    ],
-    [shown, mine, paid, values],
-  )
-  const otherOwed = useMemo(
-    () => toReceiveCents([...shown, ...mine.expenses].map((i) => i.id).filter((id) => paid.has(id)), values, payments),
-    [shown, mine, paid, values, payments],
-  )
+  // Everything still owed in the period: open items and the rest of partly received ones.
+  const open = useMemo<ListedItem[]>(() => {
+    const owed = (id: string) => states.get(id)?.remaining ?? 0
+    const part = (id: string) => (states.get(id)?.status === 'partial' ? { of: values.get(id) } : {})
+    return [
+      ...shown.filter((e) => owed(e.id) > 0).map((e) => ({ kind: 'entry' as const, item: e, cents: owed(e.id), ...part(e.id) })),
+      ...mine.expenses.filter((x) => owed(x.id) > 0).map((x) => ({ kind: 'expense' as const, item: x, cents: owed(x.id), ...part(x.id) })),
+    ]
+  }, [shown, mine, states, values])
+  const paymentsOf = (id: string) => states.get(id)?.payments ?? []
+  const viewPayments = (id: string) => {
+    const list = paymentsOf(id)
+    setViewing(list.length ? { list, i: 0 } : null)
+  }
 
   const rows = useMemo<Row[]>(() => {
     const names = new Map(employers.map((e) => [e.id, e.name]))
@@ -245,7 +262,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         employer: who === ALL_EMPLOYERS ? (names.get(e.employerId) ?? 'Employer') : `${formatClock(e.start.slice(11, 16))} – ${formatClock(e.end.slice(11, 16))}`,
         ...(e.service ? { service: e.service } : {}),
         hours: formatDuration(shiftMinutes(e)),
-        paid: paid.has(e.id),
+        paid: status(e.id),
       })),
       ...mine.expenses.map<Row>((x) => ({
         kind: 'expense',
@@ -254,12 +271,12 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         sort: `${x.date}T99:99`,
         description: x.description,
         amount: formatUSD(x.amountCents),
-        paid: paid.has(x.id),
+        paid: status(x.id),
       })),
     ]
     // Most recent first.
     return list.sort((a, b) => b.sort.localeCompare(a.sort))
-  }, [shown, mine, employers, who, paid])
+  }, [shown, mine, employers, who, states])
 
   if (!from || !to || !summary) return <main aria-label="Time clock" />
   const whoName = who === ALL_EMPLOYERS ? 'All employers' : (employers.find((e) => e.id === who)?.name ?? 'Employer')
@@ -372,7 +389,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
               <li key={`${r.kind}-${r.id}`}>
                 <RowButton
                   row={r}
-                  onTap={r.paid ? () => setViewing(paid.get(r.id) ?? null) : () => setShowOpen(true)}
+                  onTap={r.paid !== 'open' ? () => viewPayments(r.id) : () => setShowOpen(true)}
                   onOpen={() => {
                     setConfirming(false)
                     setMenu({ kind: r.kind, id: r.id })
@@ -405,7 +422,6 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         <OpenDialog
           items={open}
           toReceiveCents={toReceive}
-          otherCents={otherOwed}
           periodLabel={periodLabel(kind, from)}
           onClose={() => setShowOpen(false)}
           onReceive={() => {
@@ -416,11 +432,15 @@ export default function Home({ initialDate }: { initialDate?: string }) {
       )}
       {viewing && (
         <PaymentDialog
-          payment={viewing}
-          account={accounts.find((a) => a.id === viewing.accountId)?.name}
+          key={viewing.list[viewing.i].id}
+          payment={viewing.list[viewing.i]}
+          account={accounts.find((a) => a.id === viewing.list[viewing.i].accountId)?.name}
+          values={values}
+          position={{ index: viewing.i, count: viewing.list.length }}
+          onMove={(d) => setViewing((v) => (v ? { ...v, i: Math.min(v.list.length - 1, Math.max(0, v.i + d)) } : v))}
           onClose={() => setViewing(null)}
           onUndo={() => {
-            const p = viewing
+            const p = viewing.list[viewing.i]
             setViewing(null)
             void repo.deletePayment(p.id).then(() => {
               offerUndo('Payment undone', () => repo.savePayment(p))
@@ -437,9 +457,9 @@ export default function Home({ initialDate }: { initialDate?: string }) {
           onEdit={() => navigate(menu.kind === 'entry' ? `/entry/${menu.id}` : `/expense/${menu.id}`)}
           onAskDelete={() => setConfirming(true)}
           onViewPayment={
-            paid.has(menu.id)
+            paymentsOf(menu.id).length
               ? () => {
-                  setViewing(paid.get(menu.id) ?? null)
+                  viewPayments(menu.id)
                   setMenu(null)
                 }
               : undefined

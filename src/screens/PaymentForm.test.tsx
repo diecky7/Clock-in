@@ -28,25 +28,89 @@ beforeEach(async () => {
 })
 
 describe('PaymentForm', () => {
-  it('lists only the week and employer chosen, all ticked; cash payment with the real amount', async () => {
+  it('lists only the week and employer chosen, all ticked; Full fills in the expected amount', async () => {
     await seed()
     const user = userEvent.setup()
     render(<PaymentForm period="week" from="2026-10-04" employer="e1" />)
     const boxes = await screen.findAllByRole('checkbox')
     expect(boxes).toHaveLength(3) // t1, t2, x1 — not Bay, not next week
-    expect(screen.getByText('$495.00')).toBeInTheDocument() // expected
+    expect(screen.getByLabelText('Amount received')).toHaveValue('$495.00')
     await user.click(boxes[1]) // un-tick Tue
-    expect(screen.getByText('$255.00')).toBeInTheDocument()
-    await user.type(screen.getByLabelText('Amount received'), '25000')
-    expect(screen.getByText('−$5.00')).toBeInTheDocument()
-    // Short: the "still owed" box is offered, off by default.
-    expect(screen.getByRole('checkbox', { name: 'Keep $5.00 as still to receive' })).not.toBeChecked()
+    expect(screen.getByLabelText('Amount received')).toHaveValue('$255.00')
     await user.click(screen.getByRole('button', { name: 'Cash' }))
     await user.click(screen.getByRole('button', { name: /^Save/ }))
     await waitFor(async () => expect(await repo.listPayments()).toHaveLength(1))
     const [p] = await repo.listPayments()
-    expect(p).toMatchObject({ entryIds: ['t1'], expenseIds: ['x1'], expectedCents: 25500, receivedCents: 25000, method: 'cash', keepShortfall: false })
-    expect(p.accountId).toBeUndefined()
+    expect(p).toMatchObject({ kind: 'full', entryIds: ['t1'], expenseIds: ['x1'], expectedCents: 25500, receivedCents: 25500, method: 'cash', allocations: { t1: 24000, x1: 1500 } })
+  })
+
+  it('Full with less needs the Accept box; then everything is settled', async () => {
+    await seed()
+    const user = userEvent.setup()
+    render(<PaymentForm period="week" from="2026-10-04" employer="e1" />)
+    await screen.findAllByRole('checkbox')
+    const amount = screen.getByLabelText('Amount received')
+    await user.clear(amount)
+    await user.type(amount, '49000')
+    await user.click(screen.getByRole('button', { name: 'Cash' }))
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    expect(screen.getByText('Tick “Accept $5.00 less”, or choose Partial')).toBeInTheDocument()
+    expect(await repo.listPayments()).toHaveLength(0)
+    await user.click(screen.getByRole('checkbox', { name: 'Accept $5.00 less' }))
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    await waitFor(async () => expect(await repo.listPayments()).toHaveLength(1))
+    expect((await repo.listPayments())[0]).toMatchObject({ kind: 'full', receivedCents: 49000, allocations: { t1: 24000, t2: 24000, x1: 1500 } })
+  })
+
+  it('Partial pays the oldest first, and the rest comes back next time', async () => {
+    await seed()
+    const user = userEvent.setup()
+    const first = render(<PaymentForm period="week" from="2026-10-04" employer="e1" />)
+    await screen.findAllByRole('checkbox')
+    await user.click(screen.getByRole('button', { name: 'Partial' }))
+    expect(screen.getByLabelText('Amount received')).toHaveValue('')
+    await user.type(screen.getByLabelText('Amount received'), '30000')
+    expect(screen.getByText('$195.00')).toBeInTheDocument() // left to receive
+    await user.click(screen.getByRole('button', { name: 'Cash' }))
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    await waitFor(async () => expect(await repo.listPayments()).toHaveLength(1))
+    // Mon $240 paid, Tue gets $60 of $240, the expense (Wed) nothing.
+    expect((await repo.listPayments())[0]).toMatchObject({ kind: 'partial', entryIds: ['t1', 't2'], expenseIds: [], allocations: { t1: 24000, t2: 6000 } })
+    first.unmount()
+
+    render(<PaymentForm period="week" from="2026-10-04" employer="e1" />)
+    expect(await screen.findAllByRole('checkbox')).toHaveLength(2) // Tue (rest) and the expense
+    expect(screen.getByText('$180.00')).toBeInTheDocument()
+    expect(screen.getByText('of $240.00')).toBeInTheDocument()
+    expect(screen.getByLabelText('Amount received')).toHaveValue('$195.00')
+  })
+
+  it('Full → Partial → Full brings the expected amount back; more than expected also needs a tick', async () => {
+    await seed()
+    const user = userEvent.setup()
+    render(<PaymentForm period="week" from="2026-10-04" employer="e1" />)
+    await screen.findAllByRole('checkbox')
+    await user.click(screen.getByRole('button', { name: 'Partial' }))
+    await user.click(screen.getByRole('button', { name: 'Full' }))
+    const amount = screen.getByLabelText('Amount received')
+    expect(amount).toHaveValue('$495.00')
+    await user.type(amount, '0') // one digit too many: $4,950.00
+    await user.click(screen.getByRole('button', { name: 'Cash' }))
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    expect(screen.getByText('Tick “Accept $4,455.00 more” if that\'s right')).toBeInTheDocument()
+    expect(await repo.listPayments()).toHaveLength(0)
+  })
+
+  it('Partial cannot be the whole amount', async () => {
+    await seed()
+    const user = userEvent.setup()
+    render(<PaymentForm period="week" from="2026-10-04" employer="e1" />)
+    await screen.findAllByRole('checkbox')
+    await user.click(screen.getByRole('button', { name: 'Partial' }))
+    await user.type(screen.getByLabelText('Amount received'), '49500')
+    await user.click(screen.getByRole('button', { name: 'Cash' }))
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    expect(screen.getByText('That covers it all: choose Full')).toBeInTheDocument()
   })
 
   it('Zelle needs a real account; a new name asks before creating it', async () => {
@@ -54,7 +118,6 @@ describe('PaymentForm', () => {
     const user = userEvent.setup()
     render(<PaymentForm period="week" from="2026-10-04" employer="e1" />)
     await screen.findAllByRole('checkbox')
-    await user.type(screen.getByLabelText('Amount received'), '49500')
     await user.click(screen.getByRole('button', { name: 'Zelle' }))
     await user.click(screen.getByRole('button', { name: /^Save/ }))
     expect(screen.getByText('Choose the account')).toBeInTheDocument()
@@ -82,7 +145,6 @@ describe('PaymentForm', () => {
     const user = userEvent.setup()
     render(<PaymentForm period="week" from="2026-10-04" employer="e1" />)
     await screen.findAllByRole('checkbox')
-    await user.type(screen.getByLabelText('Amount received'), '49500')
     await user.click(screen.getByRole('button', { name: 'Zelle' }))
     await user.type(screen.getByRole('combobox'), 'bank of america')
     await user.click(screen.getByRole('button', { name: /^Save/ }))
@@ -93,7 +155,7 @@ describe('PaymentForm', () => {
 
   it('items already received are not offered again', async () => {
     await seed()
-    await repo.savePayment({ id: 'p', date: '2026-10-09', entryIds: ['t1'], expenseIds: [], expectedCents: 24000, receivedCents: 24000, method: 'cash', keepShortfall: false, createdAt: 1 })
+    await repo.savePayment({ id: 'p', date: '2026-10-09', entryIds: ['t1'], expenseIds: [], expectedCents: 24000, receivedCents: 24000, method: 'cash', keepShortfall: false, kind: 'full', allocations: { t1: 24000 }, createdAt: 1 })
     render(<PaymentForm period="week" from="2026-10-04" employer="e1" />)
     expect(await screen.findAllByRole('checkbox')).toHaveLength(2)
   })

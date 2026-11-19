@@ -99,7 +99,9 @@ const validPayment = (r: unknown): r is Payment =>
   isArr(r.entryIds) && r.entryIds.every(isStr) && isArr(r.expenseIds) && r.expenseIds.every(isStr) &&
   isCents(r.expectedCents) && isCents(r.receivedCents) && (r.method === 'cash' || r.method === 'zelle' || r.method === 'marked') &&
   (r.accountId === undefined || isStr(r.accountId)) && isBool(r.keepShortfall) && isNum(r.createdAt) &&
-  (r.itemCents === undefined || (isObj(r.itemCents) && Object.values(r.itemCents).every(isNum)))
+  (r.itemCents === undefined || (isObj(r.itemCents) && Object.values(r.itemCents).every(isNum))) &&
+  (r.kind === undefined || r.kind === 'full' || r.kind === 'partial') &&
+  (r.allocations === undefined || (isObj(r.allocations) && Object.values(r.allocations).every((v) => isNum(v) && v >= 0)))
 const validPhoto = (r: unknown): r is PhotoJson =>
   isObj(r) && isStr(r.id) && isStr(r.type) && isStr(r.data)
 

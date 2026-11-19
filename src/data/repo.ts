@@ -1,7 +1,7 @@
 import { shiftMinutes } from '../domain/time'
 import { placeKey, shortAddress } from '../location/address'
 import { SIDE_JOB } from '../domain/employers'
-import { itemValues, paidBy } from '../domain/payments'
+import { itemStates, itemValues } from '../domain/payments'
 import type { Account, Employer, Expense, Payment, Place, Settings, TimeEntry } from '../domain/types'
 import {
   getDb,
@@ -349,12 +349,14 @@ export async function unpaidBefore(date: string): Promise<{ entries: TimeEntry[]
     listPayments(),
     getSettings(),
   ])
-  const paid = paidBy(payments)
   // Values use whole work weeks (overtime), so they're worked out from every entry.
   const values = itemValues(allEntries, allExpenses, employers, s.weekStartsOn)
-  const entries = allEntries.filter((e) => e.start.slice(0, 10) < date && !paid.has(e.id))
-  const expenses = allExpenses.filter((x) => x.date < date && !paid.has(x.id))
-  const itemCents = Object.fromEntries([...entries, ...expenses].map((i) => [i.id, values.get(i.id) ?? 0]))
+  const states = itemStates(values, payments)
+  const owed = (id: string) => states.get(id)?.remaining ?? 0
+  const entries = allEntries.filter((e) => e.start.slice(0, 10) < date && owed(e.id) > 0)
+  const expenses = allExpenses.filter((x) => x.date < date && owed(x.id) > 0)
+  // What is still owed on each (partly received ones included).
+  const itemCents = Object.fromEntries([...entries, ...expenses].map((i) => [i.id, owed(i.id)]))
   return { entries, expenses, itemCents }
 }
 

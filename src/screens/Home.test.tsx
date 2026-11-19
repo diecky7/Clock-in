@@ -195,13 +195,14 @@ describe('Home', () => {
     expect(await screen.findByText('$1,415.50')).toBeInTheDocument() // the total is unchanged
     expect(await screen.findByText('To receive $1,020.00')).toBeInTheDocument() // $1,415.50 − $415.50 + $20.00
     const list = screen.getByRole('list', { name: 'This week' })
-    const received = within(list).getAllByRole('button').filter((b) => b.textContent?.includes('Received'))
+    // An older payment that kept the rest as owed reads as partial.
+    const received = within(list).getAllByRole('button').filter((b) => b.textContent?.includes('Partly received'))
     expect(received).toHaveLength(2)
 
     await user.click(received[0])
     const dialog = await screen.findByRole('dialog', { name: 'Payment received' })
     expect(dialog).toHaveTextContent('Zelle · Santander')
-    expect(dialog).toHaveTextContent('−$20.00 · still to receive')
+    expect(dialog).toHaveTextContent('Left after this$20.00')
     await user.click(within(dialog).getByRole('button', { name: 'Undo payment' }))
     expect(await screen.findByText('To receive $1,415.50')).toBeInTheDocument()
     expect(await repo.listPayments()).toEqual([])
@@ -248,6 +249,41 @@ describe('Home', () => {
     expect(within(paidFor).getAllByRole('listitem')).toHaveLength(1)
     expect(paidFor).toHaveTextContent('7:00 AM – 3:00 PM')
     expect(paidFor).toHaveTextContent('$240.00')
+  })
+
+  it('a partial payment marks the oldest rows: ✓ paid, ◐ partly, and the payment shows what each got', async () => {
+    await seed(false)
+    // $300 over Mon ($240) and Tue ($277.50): Mon paid, Tue gets $60.
+    await repo.savePayment({ id: 'p1', date: '2026-10-09', entryIds: ['t1', 't2'], expenseIds: [], expectedCents: 51750, receivedCents: 30000,
+      method: 'cash', keepShortfall: false, kind: 'partial', allocations: { t1: 24000, t2: 6000 }, createdAt: 1 })
+    const user = userEvent.setup()
+    render(<Home initialDate="2026-10-07" />)
+    expect(await screen.findByText('To receive $940.00')).toBeInTheDocument() // $1,240 − $300
+    const list = screen.getByRole('list', { name: 'This week' })
+    const rows = within(list).getAllByRole('button')
+    expect(rows.filter((b) => b.textContent?.endsWith('Received'))).toHaveLength(1)
+    const partly = rows.find((b) => b.textContent?.includes('Partly received'))!
+    await user.click(partly)
+    const paidFor = await screen.findByRole('list', { name: 'Paid for' })
+    expect(paidFor).toHaveTextContent('$60.00of $277.50')
+  })
+
+  it('a row paid in two goes shows both payments', async () => {
+    await seed(false)
+    await repo.savePayment({ id: 'a', date: '2026-10-08', entryIds: ['t1'], expenseIds: [], expectedCents: 24000, receivedCents: 10000,
+      method: 'cash', keepShortfall: false, kind: 'partial', allocations: { t1: 10000 }, createdAt: 1 })
+    await repo.savePayment({ id: 'b', date: '2026-10-09', entryIds: ['t1'], expenseIds: [], expectedCents: 14000, receivedCents: 14000,
+      method: 'cash', keepShortfall: false, kind: 'full', allocations: { t1: 14000 }, createdAt: 2 })
+    const user = userEvent.setup()
+    render(<Home initialDate="2026-10-07" />)
+    const list = await screen.findByRole('list', { name: 'This week' })
+    await user.click(within(list).getAllByRole('button').find((b) => b.textContent?.endsWith('Received'))!)
+    const dialog = await screen.findByRole('dialog', { name: 'Payment received' })
+    expect(dialog).toHaveTextContent('1 of 2')
+    expect(dialog).toHaveTextContent('Received$140.00')
+    await user.click(within(dialog).getByRole('button', { name: 'Older ›' }))
+    expect(await screen.findByText('2 of 2')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Payment received' })).toHaveTextContent('Received$100.00')
   })
 
   it('deleting a row can be undone from the toast', async () => {
