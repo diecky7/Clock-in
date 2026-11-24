@@ -2,7 +2,7 @@ import { PERIOD_KINDS, type PeriodKind } from '../domain/periods'
 import Dropdown from './Dropdown'
 
 /** Weekly / Biweekly / Monthly. */
-export default function PeriodPicker({ kind, onChange, className }: { kind: PeriodKind; onChange: (k: PeriodKind) => void; className?: string }) {
+export default function PeriodPicker({ kind, onChange }: { kind: PeriodKind; onChange: (k: PeriodKind) => void }) {
   const name = PERIOD_KINDS.find((p) => p.kind === kind)?.name ?? 'Weekly'
   return (
     <Dropdown
@@ -12,7 +12,6 @@ export default function PeriodPicker({ kind, onChange, className }: { kind: Peri
       buttonLabel={<span className="whitespace-nowrap">{name}</span>}
       ariaLabel={`Show: ${name}, change`}
       menuLabel="Show"
-      className={className}
     />
   )
 }

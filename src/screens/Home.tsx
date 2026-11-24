@@ -315,8 +315,6 @@ export default function Home({ initialDate }: { initialDate?: string }) {
     setConfirming(false)
   }
   const iconBtn = 'grid size-11 place-items-center rounded-full'
-  const pill = 'bg-surface px-3.5 text-base font-semibold'
-
   return (
     <main aria-label="Time clock" {...swipe.bind}
       className="relative mx-auto min-h-dvh max-w-md overflow-x-clip px-4 pb-28">
@@ -378,13 +376,12 @@ export default function Home({ initialDate }: { initialDate?: string }) {
               onChange={changeEmployer}
               ariaLabel={`Employer: ${whoName}, change`}
               menuLabel="Employer"
-              className={pill}
               buttonLabel={<span className="truncate">{who === ALL_EMPLOYERS ? 'All employers' : whoName}</span>}
             />
           </div>
         )}
         <div className="shrink-0">
-          <PeriodPicker kind={kind} onChange={changeKind} className={pill} />
+          <PeriodPicker kind={kind} onChange={changeKind} />
         </div>
       </div>
 

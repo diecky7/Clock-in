@@ -46,7 +46,6 @@ export default function DatePicker({
       buttonLabel={<span className="whitespace-nowrap">{label}</span>}
       ariaLabel={`${label}, choose dates`}
       menuLabel="Dates"
-      className="mx-auto text-lg font-medium"
     />
   )
 }
