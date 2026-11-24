@@ -2,9 +2,11 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { requestPersistence } from '../data/images'
+import { saveBackup } from '../data/saveBackup'
 import PersistenceNote from './PersistenceNote'
 
 vi.mock('../data/images', () => ({ requestPersistence: vi.fn() }))
+vi.mock('../data/saveBackup', () => ({ saveBackup: vi.fn() }))
 
 beforeEach(() => localStorage.clear())
 
@@ -27,5 +29,17 @@ describe('PersistenceNote', () => {
     render(<PersistenceNote />)
     await Promise.resolve()
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  })
+
+  it('Back up now makes the backup right there, and says so when it fails', async () => {
+    vi.mocked(requestPersistence).mockResolvedValue(false)
+    vi.mocked(saveBackup).mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('nope'))
+    const user = userEvent.setup()
+    render(<PersistenceNote />)
+    await user.click(await screen.findByRole('button', { name: 'Back up now' }))
+    expect(saveBackup).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Back up now' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't create the backup.")
   })
 })

@@ -7,6 +7,17 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.15.0',
+    date: '2026-11-24',
+    changes: [
+      'Tap a row to edit it, delete it or see its payment; the sheet says whether it was received',
+      '"To receive $X ›" opens what is still owed; partly received rows show "$X left"; received rows fade',
+      'New entry and expense: "Change" next to the fixed employer',
+      'Undo has a full-size tap area',
+      'Update app and the version moved to Settings; the storage notice has Back up now',
+    ],
+  },
+  {
     version: '1.14.0',
     date: '2026-11-24',
     changes: [

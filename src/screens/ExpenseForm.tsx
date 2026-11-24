@@ -3,7 +3,7 @@ import EmployerPicker from '../components/EmployerPicker'
 import PhotoPicker from '../components/PhotoPicker'
 import { Field, PrimaryButton, Screen, inputCls } from '../components/ui'
 import * as repo from '../data/repo'
-import { ALL_EMPLOYERS, defaultEmployerId, homeEmployerFor, isSideJob } from '../domain/employers'
+import { ALL_EMPLOYERS, activeEmployers, defaultEmployerId, homeEmployerFor, isSideJob } from '../domain/employers'
 import DateTimeField from '../components/DateTimeField'
 import MoneyInput from '../components/MoneyInput'
 import { formatUSD } from '../domain/money'
@@ -142,9 +142,16 @@ export default function ExpenseForm({ id, initialDate }: { id?: string; initialD
   return (
     <Screen title={title} back="/">
       {fixedEmployer ? (
-        <p className="mt-1 text-base text-muted">
-          For <span className="font-semibold text-fg">{employers.find((e) => e.id === employerId)?.name ?? 'Employer'}</span>
-        </p>
+        <div className="mt-1 flex items-center justify-between gap-3">
+          <p className="min-w-0 truncate text-base text-muted">
+            For <span className="font-semibold text-fg">{employers.find((e) => e.id === employerId)?.name ?? 'Employer'}</span>
+          </p>
+          {activeEmployers(employers).length > 1 && (
+            <button type="button" className="-my-2 min-h-11 shrink-0 rounded-full px-3 text-base font-medium" onClick={() => setFixedEmployer(false)}>
+              Change
+            </button>
+          )}
+        </div>
       ) : (
         <div className="mt-2">
           <EmployerPicker employers={employers} value={employerId} onChange={setEmployerId} />

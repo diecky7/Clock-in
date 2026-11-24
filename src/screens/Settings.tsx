@@ -3,12 +3,13 @@ import MarkReceivedDialog from '../components/MarkReceivedDialog'
 import DateTimeField from '../components/DateTimeField'
 import { formatDay } from '../domain/time'
 import { addDays } from '../domain/weeks'
-import VersionFooter from '../components/VersionFooter'
+import { APP_VERSION } from '../version'
+import { updateApp } from '../pwa-update'
+import { saveBackup } from '../data/saveBackup'
 import { CHANGELOG } from '../changelog'
 import PersistenceNote from '../components/PersistenceNote'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { BackupError, exportBackup, importBackup } from '../data/backup'
-import { shareOrDownload } from '../data/shareFile'
+import { BackupError, importBackup } from '../data/backup'
 import * as repo from '../data/repo'
 import { Screen, Section, inputCls } from '../components/ui'
 import { activeEmployers, isSideJob } from '../domain/employers'
@@ -72,9 +73,7 @@ export default function Settings() {
   async function doExport() {
     setDataMsg(null)
     try {
-      const blob = await exportBackup()
-      const file = new File([blob], `clock-in-backup-${today()}.json`, { type: 'application/json' })
-      await shareOrDownload(file)
+      await saveBackup()
     } catch (err) {
       if ((err as { name?: string }).name === 'AbortError') return // share sheet dismissed
       setDataMsg({ text: "Couldn't create the backup.", error: true })
@@ -112,6 +111,14 @@ export default function Settings() {
   return (
     <Screen title="Settings" back="/">
       <PersistenceNote />
+      <Section title="App">
+        <div className={divider}>
+          <button type="button" className={rowCls} onClick={() => void updateApp()}>
+            <span>Update app</span>
+            <span className="text-muted" aria-label={`Version ${APP_VERSION}`}>v{APP_VERSION}</span>
+          </button>
+        </div>
+      </Section>
       <Section title="Employers">
         {activeEmployers(employers).filter((e) => !isSideJob(e.id)).map((e) => (
           <div key={e.id} className={divider}>
@@ -283,7 +290,6 @@ export default function Settings() {
           </details>
         ))}
       </Section>
-      <VersionFooter />
     </Screen>
   )
 }

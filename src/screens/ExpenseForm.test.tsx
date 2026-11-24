@@ -42,6 +42,19 @@ describe('ExpenseForm', () => {
     await waitFor(async () => expect((await repo.getSettings()).lastEmployerId).toBe('e1'))
   })
 
+  it('Change next to the fixed employer brings back the choice', async () => {
+    await repo.saveEmployer(acme)
+    await repo.saveEmployer({ ...acme, id: 'e2', name: 'Bay' })
+    await repo.saveSettings({ ...(await repo.getSettings()), homeEmployer: 'e2' })
+    const user = userEvent.setup()
+    render(<ExpenseForm initialDate="2026-10-07" />)
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'Change' }))
+    expect(screen.getByRole('radio', { name: 'Bay' })).toBeChecked()
+    await user.click(screen.getByRole('radio', { name: 'Acme' }))
+    expect(screen.getByRole('radio', { name: 'Acme' })).toBeChecked()
+  })
+
   it('requires an amount', async () => {
     const user = userEvent.setup()
     await setup()

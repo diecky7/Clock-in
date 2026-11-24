@@ -107,5 +107,5 @@ it('Home after marking: old weeks all ✓, the week of Nov 9 untouched', async (
   render(<Home initialDate="2026-11-10" />)
   expect(await screen.findByText(/^To receive \$/)).toBeInTheDocument()
   const now = within(screen.getByRole('list', { name: 'This week' })).getAllByRole('button')
-  expect(now.some((r) => r.textContent?.includes('eceived'))).toBe(false)
+  expect(now.every((r) => r.textContent?.endsWith('Not received'))).toBe(true)
 })

@@ -45,6 +45,28 @@ describe('EntryForm', () => {
     expect(screen.queryByRole('radio')).not.toBeInTheDocument()
   })
 
+  it('Change next to the fixed employer brings back the choice, and the pick is saved', async () => {
+    await repo.saveEmployer(acme)
+    await repo.saveEmployer(bolt)
+    await repo.saveSettings({ ...(await repo.getSettings()), homeEmployer: bolt.id })
+    const user = userEvent.setup()
+    render(<EntryForm initialDate="2026-10-05" />)
+    await user.click(await screen.findByRole('button', { name: 'Change' }))
+    expect(screen.getByRole('radio', { name: 'Bolt' })).toBeChecked()
+    await user.click(screen.getByRole('radio', { name: 'Acme' }))
+    await user.click(screen.getByRole('button', { name: /^Save/ }))
+    await waitFor(async () => expect((await repo.listEntriesBetween('2026-10-05', '2026-10-05'))[0]?.employerId).toBe(acme.id))
+  })
+
+  it('with a single employer, Change still offers Side job', async () => {
+    await repo.saveEmployer(acme)
+    await repo.saveSettings({ ...(await repo.getSettings()), homeEmployer: acme.id })
+    const user = userEvent.setup()
+    render(<EntryForm initialDate="2026-10-05" />)
+    await user.click(await screen.findByRole('button', { name: 'Change' }))
+    expect(screen.getByRole('radio', { name: 'Side job' })).toBeInTheDocument()
+  })
+
   it('defaults In, Out and Break from the schedule of the chosen day', async () => {
     await setup()
     expect(screen.getByText('Mon, Oct 5 · 7:00 AM')).toBeInTheDocument()

@@ -182,14 +182,12 @@ describe('Home', () => {
     expect(await screen.findByRole('button', { name: 'Oct 15 – 28, go to these two weeks' })).toBeInTheDocument()
   })
 
-  it('holding a row opens Edit/Delete; Delete asks to confirm and removes the row', async () => {
+  it('tapping a row opens Edit/Delete; Delete asks to confirm and removes the row', async () => {
     await seed(false)
     const user = userEvent.setup()
     render(<Home initialDate="2026-10-07" />)
     const list = await screen.findByRole('list', { name: 'This week' })
-    const row = within(list).getAllByRole('button').at(-1)!
-    fireEvent.pointerDown(row)
-    await new Promise((r) => setTimeout(r, 560))
+    await user.click(within(list).getAllByRole('button').at(-1)!)
     expect(await screen.findByRole('button', { name: 'Edit' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Delete' }))
     expect(screen.getByText('Delete this entry?')).toBeInTheDocument()
@@ -214,6 +212,8 @@ describe('Home', () => {
     expect(received).toHaveLength(2)
 
     await user.click(received[0])
+    expect(await screen.findByText(/^Partly received · \$\d+\.\d{2} left$/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'View payment' }))
     const dialog = await screen.findByRole('dialog', { name: 'Payment received' })
     expect(dialog).toHaveTextContent('Zelle · Santander')
     expect(dialog).toHaveTextContent('Left after this$20.00')
@@ -227,42 +227,60 @@ describe('Home', () => {
     expect(await repo.listPayments()).toHaveLength(1)
   })
 
-  it('holding a received row opens only the menu, which offers View payment', async () => {
+  it('tapping a received row opens a menu with its status and View payment', async () => {
     await seed(false)
     await repo.savePayment({ id: 'p1', date: '2026-10-09', entryIds: ['t1'], expenseIds: [], expectedCents: 24000, receivedCents: 24000,
       method: 'cash', keepShortfall: false, createdAt: 1 })
     const user = userEvent.setup()
     render(<Home initialDate="2026-10-07" />)
     const list = await screen.findByRole('list', { name: 'This week' })
-    const row = within(list).getAllByRole('button').find((b) => b.textContent?.includes('Received'))!
-    fireEvent.pointerDown(row)
-    await new Promise((r) => setTimeout(r, 560))
-    fireEvent.pointerUp(row)
-    fireEvent.click(row, { detail: 1 })
+    await user.click(within(list).getAllByRole('button').find((b) => b.textContent?.includes('Received'))!)
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
+    expect(within(screen.getByRole('dialog')).getByText('Received')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'View payment' }))
     expect(await screen.findByRole('dialog', { name: 'Payment received' })).toBeInTheDocument()
   })
 
-  it('tapping an open row lists what is still open; a received payment lists what it paid for', async () => {
+  it('the To receive line lists what is still open; a received row leads to the payment and what it paid for', async () => {
     await seed()
     await repo.savePayment({ id: 'p1', date: '2026-10-09', entryIds: ['t1'], expenseIds: [], expectedCents: 24000, receivedCents: 24000,
       method: 'cash', keepShortfall: false, itemCents: { t1: 24000 }, createdAt: 1 })
     const user = userEvent.setup()
     render(<Home initialDate="2026-10-07" />)
     const list = await screen.findByRole('list', { name: 'This week' })
-    const buttons = within(list).getAllByRole('button')
-    await user.click(buttons.find((b) => !b.textContent?.includes('Received'))!)
+    await user.click(await screen.findByRole('button', { name: /^To receive/ }))
     const open = await screen.findByRole('dialog', { name: 'Still to receive' })
     expect(within(open).getByText('$1,175.50')).toBeInTheDocument()
     expect(within(within(open).getByRole('list', { name: 'Open' })).getAllByRole('listitem')).toHaveLength(5) // 4 shifts + expense
     await user.click(within(open).getByRole('button', { name: 'Close' }))
 
-    await user.click(buttons.find((b) => b.textContent?.includes('Received'))!)
+    await user.click(within(list).getAllByRole('button').find((b) => b.textContent?.includes('Received'))!)
+    await user.click(await screen.findByRole('button', { name: 'View payment' }))
     const paidFor = await screen.findByRole('list', { name: 'Paid for' })
     expect(within(paidFor).getAllByRole('listitem')).toHaveLength(1)
     expect(paidFor).toHaveTextContent('7:00 AM – 3:00 PM')
     expect(paidFor).toHaveTextContent('$240.00')
+  })
+
+  it('the header keeps Settings, Summary, Places and Export; Update app and the version moved to Settings', async () => {
+    render(<Home initialDate="2026-10-07" />)
+    await screen.findByRole('button', { name: 'Settings' })
+    expect(screen.queryByRole('button', { name: 'Update app' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Clock-in v/)).not.toBeInTheDocument()
+    for (const name of ['Summary', 'Places', 'Export']) expect(screen.getByRole('button', { name })).toBeInTheDocument()
+  })
+
+  it('an open row says it is not received; its menu has Edit and no View payment', async () => {
+    await seed(false)
+    const user = userEvent.setup()
+    render(<Home initialDate="2026-10-07" />)
+    const list = await screen.findByRole('list', { name: 'This week' })
+    const row = within(list).getAllByRole('button')[0]
+    expect(row).toHaveTextContent('Not received')
+    await user.click(row)
+    expect(await screen.findByText('Not received yet')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'View payment' })).not.toBeInTheDocument()
   })
 
   it('a partial payment marks the oldest rows: ✓ paid, ◐ partly, and the payment shows what each got', async () => {
@@ -277,7 +295,9 @@ describe('Home', () => {
     const rows = within(list).getAllByRole('button')
     expect(rows.filter((b) => b.textContent?.endsWith('Received'))).toHaveLength(1)
     const partly = rows.find((b) => b.textContent?.includes('Partly received'))!
+    expect(partly).toHaveTextContent('$217.50 left') // $277.50 − $60.00, shown under the name
     await user.click(partly)
+    await user.click(await screen.findByRole('button', { name: 'View payment' }))
     const paidFor = await screen.findByRole('list', { name: 'Paid for' })
     expect(paidFor).toHaveTextContent('$60.00of $277.50')
   })
@@ -292,6 +312,7 @@ describe('Home', () => {
     render(<Home initialDate="2026-10-07" />)
     const list = await screen.findByRole('list', { name: 'This week' })
     await user.click(within(list).getAllByRole('button').find((b) => b.textContent?.endsWith('Received'))!)
+    await user.click(await screen.findByRole('button', { name: 'View payment' }))
     const dialog = await screen.findByRole('dialog', { name: 'Payment received' })
     expect(dialog).toHaveTextContent('1 of 2')
     expect(dialog).toHaveTextContent('Received$140.00')
@@ -305,8 +326,7 @@ describe('Home', () => {
     const user = userEvent.setup()
     render(<><Home initialDate="2026-10-07" /><UndoToast /></>)
     const list = await screen.findByRole('list', { name: 'This week' })
-    fireEvent.pointerDown(within(list).getAllByRole('button').at(-1)!)
-    await new Promise((r) => setTimeout(r, 560))
+    await user.click(within(list).getAllByRole('button').at(-1)!)
     await user.click(await screen.findByRole('button', { name: 'Delete' }))
     await user.click(screen.getByRole('button', { name: 'Yes, delete' }))
     expect(await screen.findByRole('status')).toHaveTextContent('Entry deleted')
@@ -315,24 +335,12 @@ describe('Home', () => {
     expect(await repo.getEntry('t1')).toBeDefined()
   })
 
-  it('a short press does not open the menu', async () => {
-    await seed(false)
-    render(<Home initialDate="2026-10-07" />)
-    const list = await screen.findByRole('list', { name: 'This week' })
-    const row = within(list).getAllByRole('button')[0]
-    fireEvent.pointerDown(row)
-    fireEvent.pointerUp(row)
-    await new Promise((r) => setTimeout(r, 560))
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
-  })
-
   it('Edit navigates to the entry route', async () => {
     await seed(false)
     const user = userEvent.setup()
     render(<Home initialDate="2026-10-07" />)
     const row = within(await screen.findByRole('list', { name: 'This week' })).getAllByRole('button').at(-1)!
-    fireEvent.pointerDown(row)
-    await new Promise((r) => setTimeout(r, 560))
+    await user.click(row)
     await user.click(await screen.findByRole('button', { name: 'Edit' }))
     expect(window.location.hash).toBe('#/entry/t1')
   })

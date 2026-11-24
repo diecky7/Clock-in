@@ -1,47 +1,20 @@
 import Modal from './Modal'
-import { useRef, type PointerEvent } from 'react'
-
-/** Pointer handlers that fire `onLongPress` after the finger rests for `ms`. */
-export function useLongPress(onLongPress: () => void, ms = 500) {
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const fired = useRef(false)
-  const cancel = () => {
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = null
-  }
-  return {
-    onPointerDown: () => {
-      cancel()
-      fired.current = false
-      timer.current = setTimeout(() => {
-        timer.current = null
-        fired.current = true
-        onLongPress()
-      }, ms)
-    },
-    /** True once for the click that ends a hold, so it isn't also taken as a tap. */
-    consumeHold: () => {
-      const f = fired.current
-      fired.current = false
-      return f
-    },
-    onPointerUp: cancel,
-    onPointerLeave: cancel,
-    onPointerCancel: cancel,
-    onPointerMove: (e: PointerEvent) => {
-      // A moving finger is a scroll, not a hold.
-      if (Math.abs(e.movementX) + Math.abs(e.movementY) > 6) cancel()
-    },
-  }
-}
 
 export interface MenuTarget {
   kind: 'entry' | 'expense'
   id: string
 }
 
-export function LongPressMenu({
+/** What the sheet is about: the row's day, name and amount, and whether it has been received. */
+export interface MenuSummary {
+  title: string
+  status: string
+}
+
+/** What can be done with one row of the list; opens when the row is tapped. */
+export function RowMenu({
   target,
+  summary,
   confirming,
   onEdit,
   onAskDelete,
@@ -50,6 +23,7 @@ export function LongPressMenu({
   onViewPayment,
 }: {
   target: MenuTarget
+  summary?: MenuSummary
   confirming: boolean
   onViewPayment?: () => void
   onEdit: () => void
@@ -70,6 +44,12 @@ export function LongPressMenu({
           </>
         ) : (
           <>
+            {summary && (
+              <div className="px-2 pb-2 pt-1 text-center">
+                <p className="truncate text-base font-semibold">{summary.title}</p>
+                <p className="text-sm text-muted">{summary.status}</p>
+              </div>
+            )}
             {onViewPayment && (
               <button type="button" className={`${btn} bg-surface`} onClick={onViewPayment}>
                 View payment

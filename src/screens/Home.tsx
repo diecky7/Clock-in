@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChartIcon, GearIcon, RefreshIcon, PinIcon, PlusIcon, ReceiptIcon, ShareIcon } from '../components/icons'
-import { LongPressMenu, useLongPress, type MenuTarget } from '../components/LongPressMenu'
-import VersionFooter from '../components/VersionFooter'
-import { updateApp } from '../pwa-update'
+import { ChartIcon, GearIcon, PinIcon, PlusIcon, ReceiptIcon, ShareIcon } from '../components/icons'
+import { RowMenu, type MenuTarget } from '../components/RowMenu'
 import PersistenceNote from '../components/PersistenceNote'
 import { useWeekSwipe } from '../components/useWeekSwipe'
 import NewChoiceSheet from '../components/NewChoiceSheet'
@@ -34,44 +32,40 @@ function dayLabel(date: string): string {
 }
 
 type Row =
-  | { kind: 'entry'; id: string; date: string; sort: string; employer: string; service?: string; hours: string; paid: PayStatus }
-  | { kind: 'expense'; id: string; date: string; sort: string; description: string; amount: string; paid: PayStatus }
+  | { kind: 'entry'; id: string; date: string; sort: string; employer: string; service?: string; hours: string; paid: PayStatus; left?: string }
+  | { kind: 'expense'; id: string; date: string; sort: string; description: string; amount: string; paid: PayStatus; left?: string }
 
 type PayStatus = 'open' | 'partial' | 'paid'
 
 /** ✓ received, ◐ partly received; a blank of the same width keeps the numbers lined up. */
-function Paid({ on }: { on: PayStatus }) {
+function Paid({ on, left }: { on: PayStatus; left?: string }) {
   return (
-    <span className="grid w-4 shrink-0 place-items-center text-muted">
+    <span className="grid w-5 shrink-0 place-items-center text-muted">
       {on === 'paid' && (
-        <svg aria-hidden width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M2.5 6.5 5 9l4.5-6" />
+        <svg aria-hidden width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3.5 8.5 6.5 11.5l6-7.5" />
         </svg>
       )}
       {on === 'partial' && (
         // Half-filled circle: part of it received.
-        <svg aria-hidden width="12" height="12" viewBox="0 0 12 12">
-          <circle cx="6" cy="6" r="4.75" fill="none" stroke="currentColor" strokeWidth="1.3" />
-          <path d="M6 1.25a4.75 4.75 0 0 0 0 9.5z" fill="currentColor" />
+        <svg aria-hidden width="16" height="16" viewBox="0 0 16 16">
+          <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M8 1.75a6.25 6.25 0 0 0 0 12.5z" fill="currentColor" />
         </svg>
       )}
-      {on !== 'open' && <span className="sr-only">{on === 'paid' ? 'Received' : 'Partly received'}</span>}
+      <span className="sr-only">{on === 'paid' ? 'Received' : on === 'partial' ? `Partly received${left ? `, ${left} left` : ''}` : 'Not received'}</span>
     </span>
   )
 }
 
-function RowButton({ row, onOpen, onTap }: { row: Row; onOpen: () => void; onTap?: () => void }) {
-  const { consumeHold, ...press } = useLongPress(onOpen, 500)
+/** One line of the list. Tapping it opens what can be done with it; received rows fade so what is owed stands out. */
+function RowButton({ row, onOpen }: { row: Row; onOpen: () => void }) {
+  const dim = row.paid === 'paid' ? 'text-muted' : ''
+  const left = row.left ? <span className="block truncate text-sm font-medium">{row.left} left</span> : null
   return (
     <button
       type="button"
-      {...press}
-      onClick={(e) => {
-        if (consumeHold()) return
-        // detail === 0 means keyboard / VoiceOver activation: no finger to hold.
-        if (e.detail === 0) onOpen()
-        else onTap?.()
-      }}
+      onClick={onOpen}
       onContextMenu={(e) => {
         e.preventDefault()
         onOpen()
@@ -81,25 +75,25 @@ function RowButton({ row, onOpen, onTap }: { row: Row; onOpen: () => void; onTap
       <span className="w-16 shrink-0 whitespace-nowrap text-muted">{dayLabel(row.date)}</span>
       {row.kind === 'entry' ? (
         <>
-          {row.service ? (
-            <span className="min-w-0 flex-1">
-              <span className="block truncate">{row.employer}</span>
-              <span className="block truncate text-sm text-muted">{row.service}</span>
-            </span>
-          ) : (
-            <span className="flex-1 truncate">{row.employer}</span>
-          )}
-          <span className="tabular-nums">{row.hours}</span>
-          <Paid on={row.paid} />
+          <span className={`min-w-0 flex-1 ${dim}`}>
+            <span className="block truncate">{row.employer}</span>
+            {row.service && <span className="block truncate text-sm text-muted">{row.service}</span>}
+            {left}
+          </span>
+          <span className={`tabular-nums ${dim}`}>{row.hours}</span>
+          <Paid on={row.paid} left={row.left} />
         </>
       ) : (
         <>
-          <span className="flex flex-1 items-center gap-2 truncate">
-            <ReceiptIcon />
-            <span className="truncate">{row.description}</span>
+          <span className={`min-w-0 flex-1 ${dim}`}>
+            <span className="flex items-center gap-2">
+              <ReceiptIcon />
+              <span className="truncate">{row.description}</span>
+            </span>
+            {left}
           </span>
-          <span className="tabular-nums">{row.amount}</span>
-          <Paid on={row.paid} />
+          <span className={`tabular-nums ${dim}`}>{row.amount}</span>
+          <Paid on={row.paid} left={row.left} />
         </>
       )}
     </button>
@@ -232,6 +226,11 @@ export default function Home({ initialDate }: { initialDate?: string }) {
   const values = useMemo(() => itemValues(entries, mine.expenses, employers, weekStartsOn), [entries, mine, employers, weekStartsOn])
   const states = useMemo(() => itemStates(values, payments), [values, payments])
   const status = (id: string): PayStatus => states.get(id)?.status ?? 'open'
+  // What is still owed on a partly received item.
+  const leftOn = (id: string) => {
+    const st = states.get(id)
+    return st?.status === 'partial' ? { left: formatUSD(Math.round(st.remaining)) } : {}
+  }
   const toReceive = useMemo(
     () => toReceiveCents([...shown.map((e) => e.id), ...mine.expenses.map((x) => x.id)], states),
     [states, shown, mine],
@@ -264,6 +263,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         ...(e.service ? { service: e.service } : {}),
         hours: formatDuration(shiftMinutes(e)),
         paid: status(e.id),
+        ...leftOn(e.id),
       })),
       ...mine.expenses.map<Row>((x) => ({
         kind: 'expense',
@@ -273,6 +273,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         description: x.description,
         amount: formatUSD(x.amountCents),
         paid: status(x.id),
+        ...leftOn(x.id),
       })),
     ]
     // Most recent first.
@@ -307,6 +308,13 @@ export default function Home({ initialDate }: { initialDate?: string }) {
     await load(from, to, key)
   }
 
+  // The row the menu is about: what it is and where it stands, so the sheet never leaves you guessing.
+  const menuRow = menu ? rows.find((r) => r.kind === menu.kind && r.id === menu.id) : undefined
+  const menuSummary = menuRow && {
+    title: `${dayLabel(menuRow.date)} · ${menuRow.kind === 'entry' ? menuRow.employer : menuRow.description} · ${menuRow.kind === 'entry' ? menuRow.hours : menuRow.amount}`,
+    status: menuRow.paid === 'paid' ? 'Received' : menuRow.paid === 'partial' ? `Partly received · ${menuRow.left ?? ''} left` : 'Not received yet',
+  }
+
   const closeMenu = () => {
     setMenu(null)
     setConfirming(false)
@@ -320,9 +328,6 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         <div className="flex">
           <button type="button" aria-label="Settings" className={iconBtn} onClick={() => navigate('/settings')}>
             <GearIcon />
-          </button>
-          <button type="button" aria-label="Update app" className={`${iconBtn} text-muted`} onClick={() => void updateApp()}>
-            <RefreshIcon />
           </button>
         </div>
         <div className="flex">
@@ -346,9 +351,15 @@ export default function Home({ initialDate }: { initialDate?: string }) {
       <section aria-label="Balance" className="mt-2 text-center">
         <p className="text-6xl font-semibold tabular-nums tracking-tight">{formatUSD(summary.totalCents)}</p>
         <p className="mt-2 text-base text-muted">{detail}</p>
-        {settled && rows.length > 0 && (
-          <p className="mt-1 text-sm text-muted">{toReceive > 0 ? `To receive ${formatUSD(toReceive)}` : 'All received'}</p>
-        )}
+        {settled && rows.length > 0 &&
+          (toReceive > 0 ? (
+            <button type="button" onClick={() => setShowOpen(true)} className="mx-auto mt-1 flex min-h-11 items-center gap-1 rounded-full px-3 text-base font-medium">
+              To receive {formatUSD(toReceive)}
+              <span aria-hidden className="text-muted">›</span>
+            </button>
+          ) : (
+            <p className="mt-1 text-sm text-muted">All received</p>
+          ))}
       </section>
 
       <div className="mt-10 flex items-center gap-2">
@@ -381,7 +392,6 @@ export default function Home({ initialDate }: { initialDate?: string }) {
               <li key={`${r.kind}-${r.id}`}>
                 <RowButton
                   row={r}
-                  onTap={r.paid !== 'open' ? () => viewPayments(r.id) : () => setShowOpen(true)}
                   onOpen={() => {
                     setConfirming(false)
                     setMenu({ kind: r.kind, id: r.id })
@@ -393,7 +403,6 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         )}
       </div>
       </div>
-      <VersionFooter />
 
       <button
         type="button"
@@ -442,8 +451,9 @@ export default function Home({ initialDate }: { initialDate?: string }) {
         />
       )}
       {menu && (
-        <LongPressMenu
+        <RowMenu
           target={menu}
+          summary={menuSummary}
           confirming={confirming}
           onClose={closeMenu}
           onEdit={() => navigate(menu.kind === 'entry' ? `/entry/${menu.id}` : `/expense/${menu.id}`)}

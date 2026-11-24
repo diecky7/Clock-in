@@ -116,6 +116,12 @@ describe('Settings', () => {
     expect(screen.getByRole('button', { name: 'Add employer' })).toBeInTheDocument()
   })
 
+  it('has the Update app row with the version, now that the home screen no longer shows them', async () => {
+    render(<Settings />)
+    const row = await screen.findByRole('button', { name: /Update app/ })
+    expect(row).toHaveTextContent(/v\d+\.\d+\.\d+/)
+  })
+
   it('Week starts on saves weekStartsOn', async () => {
     const user = userEvent.setup()
     render(<Settings />)
