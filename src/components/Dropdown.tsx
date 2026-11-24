@@ -7,8 +7,8 @@ export interface DropdownOption {
 }
 
 /**
- * The one look for every picker on the home screen (dates, employer, period): plain text with a small arrow. A button that opens a small menu right under it (rendered at the page level, so a sliding parent
- * doesn't move or clip it). Escape or a tap outside closes it.
+ * A button of plain text and a small arrow that opens a menu right under it (rendered at the page level, so a
+ * sliding parent doesn't move or clip it). Escape or a tap outside closes it.
  */
 export default function Dropdown({
   value,

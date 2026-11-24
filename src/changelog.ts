@@ -7,6 +7,14 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.14.0',
+    date: '2026-11-24',
+    changes: [
+      'Home: arrows beside the dates move to the previous or next period',
+      'Home: tap the dates to go back to the current week, two weeks or month',
+    ],
+  },
+  {
     version: '1.13.2',
     date: '2026-11-24',
     changes: ['Home: the employer and Weekly / Biweekly / Monthly choices look like the dates at the top'],

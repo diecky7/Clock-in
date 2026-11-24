@@ -113,7 +113,6 @@ export default function Home({ initialDate }: { initialDate?: string }) {
   const [who, setWho] = useState<string>(ALL_EMPLOYERS)
   const [lastEmployerId, setLastEmployerId] = useState<string | undefined>(undefined)
   const [defaultStart, setDefaultStart] = useState<string | undefined>(undefined)
-  const [earliest, setEarliest] = useState('')
   const [employers, setEmployers] = useState<Employer[]>([])
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -155,15 +154,13 @@ export default function Home({ initialDate }: { initialDate?: string }) {
       // Whole work weeks around the period, so overtime is judged on the full week.
       const wFrom = weekStartOf(start, weekStartsOn)
       const wTo = addDays(weekStartOf(end, weekStartsOn), 6)
-      const [emps, ents, exps, pays, s, first] = await Promise.all([
+      const [emps, ents, exps, pays, s] = await Promise.all([
         repo.listEmployers(),
         repo.listEntriesBetween(wFrom, wTo),
         repo.listExpensesBetween(start, end),
         repo.listPayments(),
         repo.getSettings(),
-        repo.earliestDataDate(),
       ])
-      setEarliest(first)
       setEmployers(emps)
       setEntries(ents)
       setExpenses(exps)
@@ -342,19 +339,9 @@ export default function Home({ initialDate }: { initialDate?: string }) {
       </header>
       <PersistenceNote />
 
-      {/* Swiping changes the period; these stay for VoiceOver and keyboards only. */}
-      <nav aria-label="Period" className="sr-only">
-        <button type="button" aria-label={`Previous ${words.unit}`} onClick={() => setFrom(shiftPeriod(kind, from, -1))}>
-          ‹
-        </button>
-        <button type="button" aria-label={`Next ${words.unit}`} onClick={() => setFrom(shiftPeriod(kind, from, 1))}>
-          ›
-        </button>
-      </nav>
-
       <div style={swipe.style} className="min-h-[60dvh]">
       <div className="mt-4 flex justify-center">
-        <DatePicker kind={kind} from={from} earliest={earliest} weekStartsOn={weekStartsOn} anchor={anchor} onChange={setFrom} />
+        <DatePicker kind={kind} from={from} current={periodStart(kind, initialDate ?? today(), weekStartsOn, anchor)} onChange={setFrom} />
       </div>
       <section aria-label="Balance" className="mt-2 text-center">
         <p className="text-6xl font-semibold tabular-nums tracking-tight">{formatUSD(summary.totalCents)}</p>
