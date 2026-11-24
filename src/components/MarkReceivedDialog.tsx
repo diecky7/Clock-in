@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as repo from '../data/repo'
 import { ALL_EMPLOYERS } from '../domain/employers'
 import { formatUSD } from '../domain/money'
@@ -17,6 +17,8 @@ export default function MarkReceivedDialog({ onClose }: { onClose: () => void })
   const [date, setDate] = useState('')
   const [preview, setPreview] = useState<{ entries: number; expenses: number; cents: number } | null>(null)
   const [busy, setBusy] = useState(false)
+  // A ref, not just state: two quick taps in the same moment must not save it twice.
+  const running = useRef(false)
 
   useEffect(() => {
     let alive = true
@@ -44,7 +46,8 @@ export default function MarkReceivedDialog({ onClose }: { onClose: () => void })
   }, [date])
 
   async function mark() {
-    if (busy || !date) return
+    if (running.current || !date) return
+    running.current = true
     setBusy(true)
     try {
       const u = await repo.unpaidBefore(date)
@@ -67,6 +70,7 @@ export default function MarkReceivedDialog({ onClose }: { onClose: () => void })
       offerUndo('Marked as received', () => repo.deletePayment(payment.id))
       onClose()
     } finally {
+      running.current = false
       setBusy(false)
     }
   }
