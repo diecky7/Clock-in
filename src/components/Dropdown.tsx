@@ -7,7 +7,7 @@ export interface DropdownOption {
 }
 
 /**
- * The one pill look for every picker on the home screen (employer, dates, period). A pill button that opens a small menu right under it (rendered at the page level, so a sliding parent
+ * The one look for every picker on the home screen (dates, employer, period): plain text with a small arrow. A button that opens a small menu right under it (rendered at the page level, so a sliding parent
  * doesn't move or clip it). Escape or a tap outside closes it.
  */
 export default function Dropdown({
@@ -60,7 +60,7 @@ export default function Dropdown({
         aria-expanded={at !== null}
         aria-label={ariaLabel}
         onClick={open}
-        className={`flex min-h-11 max-w-full items-center gap-1.5 rounded-full bg-surface px-3.5 text-base font-semibold ${className}`}
+        className={`flex min-h-11 max-w-full items-center gap-1.5 rounded-full px-3 text-lg font-medium ${className}`}
       >
         {buttonLabel}
         <svg aria-hidden width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" className="shrink-0 text-muted">
