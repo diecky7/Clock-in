@@ -7,6 +7,14 @@ export interface Release {
 /** Newest first. Keep `package.json` version equal to the first entry. */
 export const CHANGELOG: Release[] = [
   {
+    version: '1.13.0',
+    date: '2026-11-24',
+    changes: [
+      'Home: the dates sit above the total; tap them to jump to any week, two weeks or month',
+      'Employer and Weekly / Biweekly / Monthly choices sit side by side above the list',
+    ],
+  },
+  {
     version: '1.12.1',
     date: '2026-11-24',
     changes: ['Mark older work as received: a quick double tap can no longer save it twice'],

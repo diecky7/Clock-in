@@ -366,3 +366,14 @@ export async function latestDataDate(): Promise<string> {
   const [entries, expenses] = await Promise.all([db.getAll(STORE_ENTRIES), db.getAll(STORE_EXPENSES)])
   return [...entries.map((e) => e.start.slice(0, 10)), ...expenses.map((x) => x.date)].reduce((a, b) => (b > a ? b : a), '')
 }
+
+/** First day that has an entry or expense ('' when there is nothing). Reads only the first record of each index. */
+export async function earliestDataDate(): Promise<string> {
+  const db = await getDb()
+  const [e, x] = await Promise.all([
+    db.transaction(STORE_ENTRIES).store.index('start').openCursor(),
+    db.transaction(STORE_EXPENSES).store.index('date').openCursor(),
+  ])
+  const dates = [e?.value.start.slice(0, 10), x?.value.date].filter((d): d is string => !!d)
+  return dates.reduce((a, b) => (b < a ? b : a), dates[0] ?? '')
+}

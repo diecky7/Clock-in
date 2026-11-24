@@ -20,6 +20,7 @@ import { addDays, weekStartOf } from '../domain/weeks'
 import { anchorFor, PERIOD_WORDS, periodEnd, periodLabel, periodStart, shiftPeriod, type PeriodKind } from '../domain/periods'
 import { summarizePeriod } from '../domain/summary'
 import PeriodPicker from '../components/PeriodPicker'
+import DatePicker from '../components/DatePicker'
 import Dropdown from '../components/Dropdown'
 import { ALL_EMPLOYERS, SIDE_JOB_ID, activeEmployers, homeEmployerFor, isSideJob } from '../domain/employers'
 import { navigate } from '../router'
@@ -112,6 +113,7 @@ export default function Home({ initialDate }: { initialDate?: string }) {
   const [who, setWho] = useState<string>(ALL_EMPLOYERS)
   const [lastEmployerId, setLastEmployerId] = useState<string | undefined>(undefined)
   const [defaultStart, setDefaultStart] = useState<string | undefined>(undefined)
+  const [earliest, setEarliest] = useState('')
   const [employers, setEmployers] = useState<Employer[]>([])
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -153,13 +155,15 @@ export default function Home({ initialDate }: { initialDate?: string }) {
       // Whole work weeks around the period, so overtime is judged on the full week.
       const wFrom = weekStartOf(start, weekStartsOn)
       const wTo = addDays(weekStartOf(end, weekStartsOn), 6)
-      const [emps, ents, exps, pays, s] = await Promise.all([
+      const [emps, ents, exps, pays, s, first] = await Promise.all([
         repo.listEmployers(),
         repo.listEntriesBetween(wFrom, wTo),
         repo.listExpensesBetween(start, end),
         repo.listPayments(),
         repo.getSettings(),
+        repo.earliestDataDate(),
       ])
+      setEarliest(first)
       setEmployers(emps)
       setEntries(ents)
       setExpenses(exps)
@@ -340,7 +344,29 @@ export default function Home({ initialDate }: { initialDate?: string }) {
       </header>
       <PersistenceNote />
 
-      <div className="mt-2 flex items-center gap-2">
+      {/* Swiping changes the period; these stay for VoiceOver and keyboards only. */}
+      <nav aria-label="Period" className="sr-only">
+        <button type="button" aria-label={`Previous ${words.unit}`} onClick={() => setFrom(shiftPeriod(kind, from, -1))}>
+          ‹
+        </button>
+        <button type="button" aria-label={`Next ${words.unit}`} onClick={() => setFrom(shiftPeriod(kind, from, 1))}>
+          ›
+        </button>
+      </nav>
+
+      <div style={swipe.style} className="min-h-[60dvh]">
+      <div className="mt-4 flex justify-center">
+        <DatePicker kind={kind} from={from} earliest={earliest} weekStartsOn={weekStartsOn} anchor={anchor} onChange={setFrom} />
+      </div>
+      <section aria-label="Balance" className="mt-2 text-center">
+        <p className="text-6xl font-semibold tabular-nums tracking-tight">{formatUSD(summary.totalCents)}</p>
+        <p className="mt-2 text-base text-muted">{detail}</p>
+        {settled && rows.length > 0 && (
+          <p className="mt-1 text-sm text-muted">{toReceive > 0 ? `To receive ${formatUSD(toReceive)}` : 'All received'}</p>
+        )}
+      </section>
+
+      <div className="mt-10 flex items-center gap-2">
         {(activeEmployers(employers).some((e) => !isSideJob(e.id)) || who === SIDE_JOB_ID) && (
           <div className="min-w-0 shrink">
             <Dropdown
@@ -353,34 +379,16 @@ export default function Home({ initialDate }: { initialDate?: string }) {
               ariaLabel={`Employer: ${whoName}, change`}
               menuLabel="Employer"
               className={pill}
-              buttonLabel={<span className="truncate">{who === ALL_EMPLOYERS ? 'All' : whoName}</span>}
+              buttonLabel={<span className="truncate">{who === ALL_EMPLOYERS ? 'All employers' : whoName}</span>}
             />
           </div>
         )}
         <div className="shrink-0">
-          <PeriodPicker kind={kind} label={periodLabel(kind, from)} onChange={changeKind} className={pill} />
+          <PeriodPicker kind={kind} onChange={changeKind} className={pill} />
         </div>
-        {/* Swiping changes the period; these stay for VoiceOver and keyboards only. */}
-        <nav aria-label="Period" className="sr-only">
-          <button type="button" aria-label={`Previous ${words.unit}`} onClick={() => setFrom(shiftPeriod(kind, from, -1))}>
-            ‹
-          </button>
-          <button type="button" aria-label={`Next ${words.unit}`} onClick={() => setFrom(shiftPeriod(kind, from, 1))}>
-            ›
-          </button>
-        </nav>
       </div>
 
-      <div style={swipe.style} className="min-h-[60dvh]">
-      <section aria-label="Balance" className="mt-10 text-center">
-        <p className="text-6xl font-semibold tabular-nums tracking-tight">{formatUSD(summary.totalCents)}</p>
-        <p className="mt-2 text-base text-muted">{detail}</p>
-        {settled && rows.length > 0 && (
-          <p className="mt-1 text-sm text-muted">{toReceive > 0 ? `To receive ${formatUSD(toReceive)}` : 'All received'}</p>
-        )}
-      </section>
-
-      <div className="mt-10">
+      <div className="mt-2">
         {!settled ? null : rows.length === 0 ? (
           <p className="py-8 text-center text-muted">Nothing logged {words.this}</p>
         ) : (

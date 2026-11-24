@@ -107,25 +107,40 @@ describe('Home', () => {
     const user = userEvent.setup()
     render(<Home initialDate="2026-10-07" />)
     await screen.findByText('$1,415.50')
-    await user.click(screen.getByRole('button', { name: 'Oct 4 – 10, change period' }))
+    await user.click(screen.getByRole('button', { name: /^Show:/ }))
     await user.click(screen.getByRole('button', { name: /Monthly/ }))
-    expect(await screen.findByRole('button', { name: 'October 2026, change period' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'October 2026, choose dates' })).toBeInTheDocument()
     expect(await screen.findByText('$1,687.50')).toBeInTheDocument() // + 8 h at $34
     expect(within(screen.getByRole('list', { name: 'This month' })).getAllByRole('listitem')).toHaveLength(7)
     await user.click(screen.getByRole('button', { name: 'Previous month' }))
     expect(await screen.findByText('Nothing logged this month')).toBeInTheDocument()
     expect((await repo.getSettings()).homePeriod).toBe('month')
 
-    await user.click(screen.getByRole('button', { name: 'September 2026, change period' }))
+    await user.click(screen.getByRole('button', { name: /^Show:/ }))
     await user.click(screen.getByRole('button', { name: /Biweekly/ }))
-    expect(await screen.findByRole('button', { name: 'Aug 23 – Sep 5, change period' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Aug 23 – Sep 5, choose dates' })).toBeInTheDocument()
+  })
+
+  it('the dates above the total list every period since the first data, to jump straight to one', async () => {
+    await seed()
+    await repo.saveEntry(shift('old', '05', '15:00', 3400)) // Oct 5 is in seed; add one in August
+    await repo.saveEntry({ ...shift('aug', '05', '15:00', 3400), id: 'aug', start: '2026-08-10T07:00', end: '2026-08-10T15:00' })
+    const user = userEvent.setup()
+    render(<Home initialDate="2026-10-07" />)
+    await user.click(await screen.findByRole('button', { name: 'Oct 4 – 10, choose dates' }))
+    const menu = screen.getByRole('group', { name: 'Dates' })
+    const opts = within(menu).getAllByRole('button')
+    expect(opts.at(-1)).toHaveTextContent('Aug 9 – 15') // first week with data
+    await user.click(within(menu).getByRole('button', { name: 'Aug 9 – 15' }))
+    expect(await screen.findByRole('button', { name: 'Aug 9 – 15, choose dates' })).toBeInTheDocument()
+    expect(await screen.findByText('$272.00')).toBeInTheDocument()
   })
 
   it('two weeks follow the employer pay period start', async () => {
     await repo.saveEmployer({ ...acme, biweeklyStart: '2026-10-01' })
     await repo.saveSettings({ ...(await repo.getSettings()), homePeriod: 'biweek' })
     render(<Home initialDate="2026-10-07" />)
-    expect(await screen.findByRole('button', { name: 'Oct 1 – 14, change period' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Oct 1 – 14, choose dates' })).toBeInTheDocument()
   })
 
   it('the employer menu shows one employer or all, opens on the last used, and remembers the choice', async () => {
@@ -162,10 +177,10 @@ describe('Home', () => {
     await repo.saveSettings({ ...(await repo.getSettings()), homePeriod: 'biweek', homeEmployer: 'e1', biweeklyStart: '2026-10-01' })
     const user = userEvent.setup()
     render(<Home initialDate="2026-10-20" />)
-    expect(await screen.findByRole('button', { name: 'Oct 15 – 28, change period' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Oct 15 – 28, choose dates' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /^Employer:/ }))
     await user.click(screen.getByRole('button', { name: 'All employers' }))
-    expect(await screen.findByRole('button', { name: 'Oct 15 – 28, change period' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Oct 15 – 28, choose dates' })).toBeInTheDocument()
   })
 
   it('holding a row opens Edit/Delete; Delete asks to confirm and removes the row', async () => {
